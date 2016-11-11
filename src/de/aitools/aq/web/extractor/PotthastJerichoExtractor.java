@@ -2,9 +2,9 @@ package de.aitools.aq.web.extractor;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 import org.apache.commons.io.FileUtils;
 
@@ -45,12 +45,12 @@ public class PotthastJerichoExtractor extends JerichoHtmlSentenceExtractor {
     this.setMinStopWordsInSentence(DEFAULT_MIN_NUM_STOP_WORDS_IN_SENTENCE);
     this.wordMatchTextFilter = new TextFilter(this.wordMatchFilter);
     this.setMinMatchingWordRatioInSentence(DEFAULT_MIN_WORD_TO_TOKEN_RATIO);
-    this.setExtractLanguage(Locale.ENGLISH);
+    this.setTargetLanguage(Locale.ENGLISH);
   }
   
   @Override
-  public void setExtractLanguages(final Collection<Locale> targetLanguages) {
-    super.setExtractLanguages(targetLanguages);
+  public void setTargetLanguages(final Set<Locale> targetLanguages) {
+    super.setTargetLanguages(targetLanguages);
     this.stopWordFilter.retainStopWordLists(targetLanguages);
   }
   
