@@ -4,6 +4,7 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Queue;
@@ -14,6 +15,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -32,41 +34,11 @@ import org.apache.hadoop.util.ToolRunner;
 
 import edu.cmu.lemurproject.WarcRecord;
 
-/**
- * Abstract base class for methods to extract sentences from HTML documents.
- * 
- * <p>
- * This class brings a timeout functionality, support for WARCRecords, and an
- * extensible command line interface to be used for both local and Hadoop jobs.
- * </p><p>
- * Currently, it only supports reading HTML files when running locally and only
- * WARC files when running on Hadoop. Every class that extends this class will
- * automatically inherit this functionality.
- * </p><p>
- * When you extend this class, and your method is not configurable, you only
- * have to implement the {@link #extract(String)} method and add the following
- * main method:
- * <pre>
- * public static void main(final String[] args) throws Exception {
- *   HtmlSentenceExtractor.main(args, MySentenceExtractor.class);
- * }
- * </pre>
- * Where you replace <tt>MySentenceExtractor</tt> with the name of your class.
- * </p><p>
- * When you want to add 
- * </p>
- *
- * @author johannes.kiesel@uni-weimar.de
- * @version $Date$
- *
- */
 public abstract class HtmlSentenceExtractor {
 
   //////////////////////////////////////////////////////////////////////////////
   //                                  CONSTANTS                               //
   //////////////////////////////////////////////////////////////////////////////
-  
-  public static final int NO_TIMEOUT = -1;
   
   protected static final Pattern HTML_CONTENT_TYPE_PATTERN = Pattern.compile(
       "text/html.*");
@@ -83,40 +55,32 @@ public abstract class HtmlSentenceExtractor {
   private static final String MODE_LOCAL = "local";
   
   private static final String MODE_HADOOP = "hadoop";
-
-
-
-  public static String SHORT_FLAG_INPUT = "i";
-
-  public static String FLAG_INPUT = "input";
-
-  public static String SHORT_FLAG_OUTPUT = "o";
   
-  public static String FLAG_OUTPUT = "output";
+  private static final String[] MODES = { MODE_LOCAL, MODE_HADOOP };
 
-  public static String SHORT_FLAG_HELP = "h";
+
+
+  private static String SHORT_FLAG_INPUT = "i";
+
+  public static String FLAG_INPUT = "input-files";
+
+  private static String SHORT_FLAG_OUTPUT = "o";
   
-  public static String FLAG_HELP = "help";
+  public static String FLAG_OUTPUT = "output-directory";
 
-  public static String SHORT_FLAG_NUM_THREADS = "t";
+  private static String SHORT_FLAG_HELP = "h";
   
-  public static String FLAG_NUM_THREADS = "threads";
+  protected static String FLAG_HELP = "help";
 
-  public static String SHORT_FLAG_TIMEOUT = "s";
-
-  public static String FLAG_TIMEOUT = "timeout-in-seconds";
-
-  public static String SHORT_FLAG_WRITE_NAMES = "n";
-
-  public static String FLAG_WRITE_NAMES = "write-names";
+  private static String SHORT_FLAG_NUM_THREADS = "t";
+  
+  private static String FLAG_NUM_THREADS = "num-threads";
 
   //////////////////////////////////////////////////////////////////////////////
   //                                   MEMBERS                                //
   //////////////////////////////////////////////////////////////////////////////
   
   private final ExecutorService executor;
-  
-  private int timeoutInSeconds;
 
   //////////////////////////////////////////////////////////////////////////////
   //                                CONSTRUCTORS                              //
@@ -124,105 +88,42 @@ public abstract class HtmlSentenceExtractor {
   
   public HtmlSentenceExtractor() {
     this.executor = Executors.newCachedThreadPool();
-    this.setNoTimeout();
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  //                                   GETTERS                                //
-  //////////////////////////////////////////////////////////////////////////////
-  
-  public boolean hasTimeout() {
-    return this.timeoutInSeconds != NO_TIMEOUT;
-  }
-  
-  public int getTimeoutInSeconds() {
-    return this.timeoutInSeconds;
   }
 
   //////////////////////////////////////////////////////////////////////////////
   //                                CONFIGURATION                             //
   //////////////////////////////////////////////////////////////////////////////
 
-  public void configure(final CommandLine config) {
-    final String timeout = config.getOptionValue(FLAG_TIMEOUT);
-    if (timeout != null) {
-      this.setTimeoutInSeconds(Integer.parseInt(timeout));
-    }
-  }
-  
-  public void setNoTimeout() {
-    this.setTimeoutInSeconds(NO_TIMEOUT);
-  }
-  
-  public void setTimeoutInSeconds(final int timeoutInSeconds) {
-    if (timeoutInSeconds <= 0 && timeoutInSeconds != NO_TIMEOUT) {
-      throw new IllegalArgumentException(
-          "Non-positive timeout: " + timeoutInSeconds);
-    }
-    this.timeoutInSeconds = timeoutInSeconds;
-  }
+  public abstract void configure(final CommandLine config);
 
   //////////////////////////////////////////////////////////////////////////////
   //                               FUNCTIONALITY                              //
   //////////////////////////////////////////////////////////////////////////////
 
-  protected abstract List<String> extract(final String htmlInput)
-  throws NullPointerException, IllegalArgumentException;
-  
-  public List<String> extractSentences(final String htmlInput)
-  throws ExecutionException {
-    final HtmlSentenceExtractor extractor = this;
-    
-    if (this.timeoutInSeconds == NO_TIMEOUT) {
-      return extractor.extract(htmlInput);
-    } else {
-      final Callable<List<String>> task = new Callable<List<String>>() {
-         public List<String> call() throws IOException {
-            return extractor.extract(htmlInput);
-         }
-      };
-      final Future<List<String>> future = this.executor.submit(task);
-      try {
-        return future.get(this.timeoutInSeconds, TimeUnit.SECONDS);
-      } catch (final Throwable e) {
-        future.cancel(true);
-        throw new ExecutionException(e);
-      }
-    }
-  }
-  
-  public static String extractHtml(final WarcRecord record)
+  public List<String> extractSentences(final WarcRecord record)
   throws IOException {
     if (!record.getHeaderRecordType().equals("response")) { return null; }
 
     final String warcContent = record.getContentUTF8().trim();
 
-    final String httpHeader = HtmlSentenceExtractor.getHeader(warcContent);
+    final String httpHeader = this.getHeader(warcContent);
     if (httpHeader == null) { return null; }
 
-    final String contentType = HtmlSentenceExtractor.getContentType(httpHeader);
+    final String contentType = this.getContentType(httpHeader);
     if (contentType == null) { return null; }
 
     if (!HTML_CONTENT_TYPE_PATTERN.matcher(contentType).matches()) {
       return null;
     }
     
-    return warcContent.substring(httpHeader.length());
+    final String httpContent = warcContent.substring(httpHeader.length());
+    return this.extractSentences(httpContent);
   }
 
-  protected static String getHeader(final String warcContent) {
-    if (!warcContent.startsWith(HEADER_START)) { return null; }
+  public abstract List<String> extractSentences(final String htmlInput)
+  throws NullPointerException, IllegalArgumentException;
 
-    final Matcher endMatcher = HEADER_END_PATTERN.matcher(warcContent);
-    if (!endMatcher.find()) {
-      return null;
-    }
-    final int httpHeaderEnd = endMatcher.end();
-
-    return warcContent.substring(0, httpHeaderEnd);
-  }
-
-  protected static String getContentType(final String httpHeader) {
+  protected String getContentType(final String httpHeader) {
     final int fieldStart = httpHeader.indexOf(HEADER_CONTENT_TYPE);
     if (fieldStart < 0) { return null; }
 
@@ -238,6 +139,46 @@ public abstract class HtmlSentenceExtractor {
     return fieldValue.trim().toLowerCase();
   }
   
+  public List<String> extractSentences(
+      final WarcRecord warcRecord, final int timeoutInSeconds)
+  throws InterruptedException, ExecutionException, TimeoutException {
+    final HtmlSentenceExtractor extractor = this;
+
+    final Callable<List<String>> task = new Callable<List<String>>() {
+       public List<String> call() throws IOException {
+          return extractor.extractSentences(warcRecord);
+       }
+    };
+    final Future<List<String>> future = this.executor.submit(task);
+    return future.get(timeoutInSeconds, TimeUnit.SECONDS);
+  }
+  
+  public List<String> extractSentences(
+      final String htmlInput, final int timeoutInSeconds)
+  throws InterruptedException, ExecutionException, TimeoutException {
+    final HtmlSentenceExtractor extractor = this;
+
+    final Callable<List<String>> task = new Callable<List<String>>() {
+       public List<String> call() throws IOException {
+          return extractor.extractSentences(htmlInput);
+       }
+    };
+    final Future<List<String>> future = this.executor.submit(task);
+    return future.get(timeoutInSeconds, TimeUnit.SECONDS);
+  }
+
+  protected String getHeader(final String warcContent) {
+    if (!warcContent.startsWith(HEADER_START)) { return null; }
+
+    final Matcher endMatcher = HEADER_END_PATTERN.matcher(warcContent);
+    if (!endMatcher.find()) {
+      return null;
+    }
+    final int httpHeaderEnd = endMatcher.end();
+
+    return warcContent.substring(0, httpHeaderEnd);
+  }
+  
   //////////////////////////////////////////////////////////////////////////////
   //                                   PROGRAM                                //
   //////////////////////////////////////////////////////////////////////////////
@@ -251,12 +192,10 @@ public abstract class HtmlSentenceExtractor {
       HtmlSentenceExtractor.printHelp(extractorClass, options, 1);
     }
     final String mode = args[0];
-    final String[] reducedArgs = new String[args.length - 1];
-    System.arraycopy(args, 1, reducedArgs, 0, reducedArgs.length);
 
     final CommandLineParser parser = new GnuParser();
     try {
-      final CommandLine config = parser.parse(options, reducedArgs);
+      final CommandLine config = parser.parse(options, args);
       if (config.hasOption(FLAG_HELP)) {
         HtmlSentenceExtractor.printHelp(extractorClass, options, 0);
       }
@@ -272,7 +211,7 @@ public abstract class HtmlSentenceExtractor {
         HadoopHtmlSentenceExtractionTool.configure(
             hadoopConfig, extractorClass);
         System.exit(ToolRunner.run(
-            hadoopConfig, new HadoopHtmlSentenceExtractionTool(), reducedArgs));
+            hadoopConfig, new HadoopHtmlSentenceExtractionTool(), args));
         break;
 
       default:
@@ -313,25 +252,12 @@ public abstract class HtmlSentenceExtractor {
     helpOption.setLongOpt(FLAG_HELP);
     options.addOption(helpOption);
 
-    final Option timeoutOption = new Option(SHORT_FLAG_TIMEOUT, true,
-        "Sets the timeout in seconds to try per HTML");
-    timeoutOption.setLongOpt(FLAG_TIMEOUT);
-    timeoutOption.setArgName("sec");
-    options.addOption(timeoutOption);
-
     final Option numThreadsOption = new Option(SHORT_FLAG_NUM_THREADS, true,
         "Sets the number of web pages to extract in parallel (only used for "
-        + MODE_LOCAL + " mode)");
+            + MODE_LOCAL + " mode)");
     numThreadsOption.setLongOpt(FLAG_NUM_THREADS);
     numThreadsOption.setArgName("num");
     options.addOption(numThreadsOption);
-
-    final Option writeFileNamesOption = new Option(SHORT_FLAG_WRITE_NAMES,
-        "Separates the sentences from different pages in " + MODE_HADOOP
-        + " by two empty lines and adds a line containing the URI (and "
-        + "TREC-ID, if it exists) before the first extracted sentence");
-    writeFileNamesOption.setLongOpt(FLAG_WRITE_NAMES);
-    options.addOption(writeFileNamesOption);
     
     return options;
   }
@@ -401,14 +327,7 @@ public abstract class HtmlSentenceExtractor {
         }
       }
     });
-    final String usage = classType.getName() + " local|hadoop "
-        + "[hadoop-options] [options]";
-    final String header = "The first argument must always be the mode (either "
-        + "'local' or 'hadoop'). In hadoop mode, the options that apply to all "
-        + "hadoop jobs can be specified directly after this. You still have to "
-        + "use the hadoop command (instead of java) when using hadoop mode.";
-    final String footer = "";
-    formatter.printHelp(usage, header, options, footer, false);
+    formatter.printHelp(classType.getName() + " [local|hadoop]", options, true);
     System.exit(exitCode);
   }
 

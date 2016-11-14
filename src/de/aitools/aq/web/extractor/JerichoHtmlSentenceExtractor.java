@@ -151,7 +151,6 @@ public class JerichoHtmlSentenceExtractor extends HtmlSentenceExtractor {
   
   @Override
   public void configure(final CommandLine config) {
-    super.configure(config);
     final String[] targetLanguages =
         config.getOptionValues(FLAG_EXTRACT_LANGUAGES);
     final boolean detectAll =
@@ -183,7 +182,7 @@ public class JerichoHtmlSentenceExtractor extends HtmlSentenceExtractor {
   //////////////////////////////////////////////////////////////////////////////
 
   @Override
-  protected List<String> extract(final String htmlInput)
+  public List<String> extractSentences(final String htmlInput)
   throws NullPointerException, IllegalArgumentException {
     if (htmlInput == null) {
       throw new NullPointerException();

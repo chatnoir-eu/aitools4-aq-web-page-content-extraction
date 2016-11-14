@@ -45,8 +45,7 @@ public abstract class WordFilter implements BiPredicate<String, Locale> {
     int begin = segmenter.first();
     int end = segmenter.next();
     while (end != BreakIterator.DONE) {
-      final String segment = text.substring(begin, end).trim();
-      if (!segment.isEmpty()) { segments.add(segment); }
+      segments.add(text.substring(begin, end));
       begin = end;
       end = segmenter.next();
     }
