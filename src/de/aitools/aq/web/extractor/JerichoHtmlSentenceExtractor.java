@@ -65,7 +65,7 @@ public class JerichoHtmlSentenceExtractor extends HtmlSentenceExtractor {
   //////////////////////////////////////////////////////////////////////////////
   
   public JerichoHtmlSentenceExtractor() {
-    this.setUseLanguage(Locale.ENGLISH);
+    this.setExtractLanguage(Locale.ENGLISH);
     this.setDoNotSeparateParagraphs();
   }
 
@@ -78,6 +78,10 @@ public class JerichoHtmlSentenceExtractor extends HtmlSentenceExtractor {
   }
   
   public Function<String, Locale> getLanguageDetector() {
+    if (this.languageDetector == null) {
+      final LanguageDetector languageDetector = new LanguageDetector();
+      this.setLanguageDetector(text -> languageDetector.detect(text));
+    }
     return this.languageDetector;
   }
   
@@ -91,8 +95,7 @@ public class JerichoHtmlSentenceExtractor extends HtmlSentenceExtractor {
   
   public void setExtractAllLanguages() {
     this.targetLanguages = null;
-    final LanguageDetector languageDetector = new LanguageDetector();
-    this.setLanguageDetector(text -> languageDetector.detect(text));
+    this.languageDetector = null;
   }
 
   public void setExtractLanguages(final String... targetLanguages) {
@@ -112,8 +115,7 @@ public class JerichoHtmlSentenceExtractor extends HtmlSentenceExtractor {
     for (final Locale targetLanguage : targetLanguages) {
       this.targetLanguages.add(targetLanguage.getLanguage());
     }
-    final LanguageDetector languageDetector = new LanguageDetector();
-    this.setLanguageDetector(text -> languageDetector.detect(text));
+    this.languageDetector = null;
   }
   
   public void setExtractLanguage(final Locale targetLanguage) {
@@ -262,7 +264,7 @@ public class JerichoHtmlSentenceExtractor extends HtmlSentenceExtractor {
   }
   
   protected Locale detectLanguage(final String text) {
-    final Locale detectedLanguage = this.languageDetector.apply(text);
+    final Locale detectedLanguage = this.getLanguageDetector().apply(text);
     if (!this.isTargetLanguage(detectedLanguage)) { return null; }
     return detectedLanguage;
   }

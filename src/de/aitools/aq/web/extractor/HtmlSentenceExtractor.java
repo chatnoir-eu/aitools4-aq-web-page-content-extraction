@@ -50,7 +50,15 @@ public abstract class HtmlSentenceExtractor {
   protected static final Pattern HEADER_END_PATTERN = Pattern.compile(
       "\r?\n\r?\n");
   
+
   
+  private static final String MODE_LOCAL = "local";
+  
+  private static final String MODE_HADOOP = "hadoop";
+  
+  private static final String[] MODES = { MODE_LOCAL, MODE_HADOOP };
+
+
 
   private static String SHORT_FLAG_INPUT = "i";
 
@@ -59,18 +67,6 @@ public abstract class HtmlSentenceExtractor {
   private static String SHORT_FLAG_OUTPUT = "o";
   
   public static String FLAG_OUTPUT = "output-directory";
-
-  private static String SHORT_FLAG_MODE = "m";
-  
-  private static String FLAG_MODE = "mode";
-  
-  private static final String MODE_LOCAL = "local";
-  
-  private static final String MODE_HADOOP = "hadoop";
-  
-  private static final String MODE_DEFAULT = MODE_LOCAL;
-  
-  private static final String[] MODES = { MODE_LOCAL, MODE_HADOOP };
 
   private static String SHORT_FLAG_HELP = "h";
   
@@ -192,6 +188,11 @@ public abstract class HtmlSentenceExtractor {
   throws Exception {
     final HtmlSentenceExtractor extractor = extractorClass.newInstance();
     final Options options = extractor.getOptions();
+    if (args.length == 0) {
+      HtmlSentenceExtractor.printHelp(extractorClass, options, 1);
+    }
+    final String mode = args[0];
+
     final CommandLineParser parser = new GnuParser();
     try {
       final CommandLine config = parser.parse(options, args);
@@ -199,7 +200,6 @@ public abstract class HtmlSentenceExtractor {
         HtmlSentenceExtractor.printHelp(extractorClass, options, 0);
       }
 
-      final String mode = config.getOptionValue(FLAG_MODE, MODE_DEFAULT);
       switch (mode) {
       case MODE_LOCAL:
         HtmlSentenceExtractor.extractLocal(extractor, config);
@@ -209,7 +209,7 @@ public abstract class HtmlSentenceExtractor {
       case MODE_HADOOP:
         final Configuration hadoopConfig = new Configuration();
         HadoopHtmlSentenceExtractionTool.configure(
-            hadoopConfig, extractorClass, args);
+            hadoopConfig, extractorClass);
         System.exit(ToolRunner.run(
             hadoopConfig, new HadoopHtmlSentenceExtractionTool(), args));
         break;
@@ -247,21 +247,14 @@ public abstract class HtmlSentenceExtractor {
     outputOption.setRequired(true);
     options.addOption(outputOption);
 
-    final Option modeOption = new Option(SHORT_FLAG_MODE, true,
-        "Sets the mode to use: " + Arrays.toString(MODES)
-          + " (default: " + MODE_DEFAULT + ")");
-    modeOption.setLongOpt(FLAG_MODE);
-    modeOption.setArgName("mode");
-    options.addOption(modeOption);
-
     final Option helpOption = new Option(SHORT_FLAG_HELP,
         "Prints this message");
     helpOption.setLongOpt(FLAG_HELP);
     options.addOption(helpOption);
 
     final Option numThreadsOption = new Option(SHORT_FLAG_NUM_THREADS, true,
-        "Sets the number of web pages to extract in parallel (ignored if --"
-            + FLAG_MODE + "=" + MODE_HADOOP + ")");
+        "Sets the number of web pages to extract in parallel (only used for "
+            + MODE_LOCAL + " mode)");
     numThreadsOption.setLongOpt(FLAG_NUM_THREADS);
     numThreadsOption.setArgName("num");
     options.addOption(numThreadsOption);
@@ -334,7 +327,7 @@ public abstract class HtmlSentenceExtractor {
         }
       }
     });
-    formatter.printHelp(classType.getName(), options, true);
+    formatter.printHelp(classType.getName() + " [local|hadoop]", options, true);
     System.exit(exitCode);
   }
 
