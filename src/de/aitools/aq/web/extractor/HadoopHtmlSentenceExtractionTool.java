@@ -1,11 +1,15 @@
 package de.aitools.aq.web.extractor;
 
+import java.io.IOException;
 import java.util.Arrays;
+import java.util.List;
+import java.util.concurrent.TimeoutException;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.GnuParser;
 import org.apache.commons.cli.Options;
+import org.apache.commons.cli.ParseException;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.LongWritable;
@@ -19,6 +23,8 @@ import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
 import org.apache.hadoop.util.Tool;
 
 import edu.cmu.lemurproject.WarcFileInputFormat;
+import edu.cmu.lemurproject.WarcHTMLResponseRecord;
+import edu.cmu.lemurproject.WarcRecord;
 import edu.cmu.lemurproject.WritableWarcRecord;
 
 public class HadoopHtmlSentenceExtractionTool implements Tool {
@@ -116,12 +122,107 @@ public class HadoopHtmlSentenceExtractionTool implements Tool {
   public static class WarcMapper
   extends Mapper<LongWritable, WritableWarcRecord, Text, Text> {
 
+    private static final Text EMPTY_TEXT = new Text("");
+
     public static enum COUNTERS {
       VALID_FILES,
       VALID_ZERO_SENTENCE_FILES,
       EXTRACTION_ERRORS,
       EXTRACTION_TIMEOUT_ERRORS,
       OUTPUT_NUM_SENTENCES,
+    }
+    
+    private HtmlSentenceExtractor extractor;
+    
+    private boolean writeNames;
+    
+    public WarcMapper() {
+      this.extractor = null;
+      this.writeNames = false;
+    }
+    
+    @Override
+    protected void setup(final Context context)
+    throws IOException, InterruptedException {
+      final Configuration configuration = context.getConfiguration();
+      
+      try {
+        @SuppressWarnings("unchecked")
+        final Class<? extends HtmlSentenceExtractor> extractorClass =
+            (Class<? extends HtmlSentenceExtractor>)
+              Class.forName(configuration.get(PARAM_EXTRACTOR));
+        this.extractor = extractorClass.newInstance();
+      } catch (final InstantiationException | IllegalAccessException
+          | ClassNotFoundException e) {
+        throw new RuntimeException(e);
+      }
+      
+
+      final Options options = this.extractor.getOptions();
+      final String[] args = configuration.getStrings(PARAM_ARGS);
+      final CommandLineParser parser = new GnuParser();
+      try {
+        final CommandLine config = parser.parse(options, args);
+        this.writeNames =
+            config.getOptionValue(HtmlSentenceExtractor.FLAG_WRITE_NAMES) != null;
+        this.extractor.configure(config);
+      } catch (final ParseException e) {
+        throw new RuntimeException(e);
+      }
+    }
+
+    @Override
+    protected void map(final LongWritable key, final WritableWarcRecord value,
+        final Context context)
+    throws IOException, InterruptedException {
+      final WarcRecord warcRecord = value.getRecord();
+      List<String> sentences = null;
+      try {
+        final String html = HtmlSentenceExtractor.extractHtml(warcRecord);
+        sentences = this.extractor.extract(html);
+      } catch (final Throwable e) {
+        final Throwable cause = e.getCause();
+        if (cause != null && cause instanceof TimeoutException) {
+          context.getCounter(COUNTERS.EXTRACTION_TIMEOUT_ERRORS).increment(1);
+        }
+        context.getCounter(COUNTERS.EXTRACTION_ERRORS).increment(1);
+      }
+
+      if (sentences != null) {
+        context.getCounter(COUNTERS.VALID_FILES).increment(1);
+
+        if (sentences.isEmpty()) {
+          context.getCounter(COUNTERS.VALID_ZERO_SENTENCE_FILES).increment(1);
+        } else {
+          final WarcHTMLResponseRecord htmlWarcRecord =
+              new WarcHTMLResponseRecord(warcRecord);
+
+          if (this.writeNames) {
+            context.write(EMPTY_TEXT, EMPTY_TEXT);
+            context.write(EMPTY_TEXT, EMPTY_TEXT);
+            final StringBuilder names = new StringBuilder();
+            final String uri = htmlWarcRecord.getTargetURI();
+            if (uri != null) { names.append(uri); }
+            names.append(' ');
+            final String trecId = htmlWarcRecord.getTargetTrecID();
+            if (trecId != null) { names.append(trecId); }
+            this.writeSentence(names.toString(), context);
+          }
+
+          for (final String sentence : sentences) {
+            this.writeSentence(sentence, context);
+          }
+          context.getCounter(COUNTERS.OUTPUT_NUM_SENTENCES).increment(
+              sentences.size());
+        }
+      }
+      context.progress();
+    }
+
+    protected void writeSentence(final String sentence, final Context context)
+    throws IOException, InterruptedException {
+      final Text text = new Text(sentence);
+      context.write(text, EMPTY_TEXT);
     }
     
   }

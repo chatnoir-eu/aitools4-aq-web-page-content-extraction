@@ -1,12 +1,12 @@
 package de.aitools.aq.web.extractor;
 
-import java.io.File;
-import java.io.IOException;
 import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
 
-import org.apache.commons.io.FileUtils;
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.Option;
+import org.apache.commons.cli.Options;
 
 import de.aitools.aq.text.StopWordFilter;
 import de.aitools.aq.text.TextFilter;
@@ -18,6 +18,32 @@ public class PotthastJerichoExtractor extends JerichoHtmlSentenceExtractor {
   // Default values implement the setting used in
   // "A Large-scale Analysis of the Mnemonic Password Advice"
 
+  //////////////////////////////////////////////////////////////////////////////
+  //                                  CONSTANTS                               //
+  //////////////////////////////////////////////////////////////////////////////
+  
+  private static String SHORT_FLAG_MIN_PARAGRAPH_LENGTH = "l";
+  
+  private static String FLAG_MIN_PARAGRAPH_LENGTH = "min-paragraph-length";
+
+  private static String SHORT_FLAG_MIN_STOP_WORDS = "sw";
+  
+  private static String FLAG_MIN_STOP_WORDS = "min-stop-words";
+
+  private static String SHORT_FLAG_MIN_STOP_WORD_RATIO = "swr";
+  
+  private static String FLAG_MIN_STOP_WORD_RATIO = "min-stop-word-ratio";
+
+  private static String SHORT_FLAG_MIN_MATCHING_WORDS = "mw";
+  
+  private static String FLAG_MIN_MATCHING_WORDS = "min-matching-words";
+
+  private static String SHORT_FLAG_MIN_MATCHING_WORD_RATIO = "mwr";
+  
+  private static String FLAG_MIN_MATCHING_WORD_RATIO = "min-matching-word-ratio";
+  
+  
+
   private static final String DEFAULT_WORD_PATTERN =
       "^\\p{IsAlphabetic}[-\\p{IsAlphabetic}]*\\p{IsAlphabetic}*$";
 
@@ -26,6 +52,10 @@ public class PotthastJerichoExtractor extends JerichoHtmlSentenceExtractor {
   public static final int DEFAULT_MIN_NUM_STOP_WORDS_IN_SENTENCE = 1;
 
   public static final double DEFAULT_MIN_WORD_TO_TOKEN_RATIO = 0.5;
+
+  //////////////////////////////////////////////////////////////////////////////
+  //                                   MEMBERS                                //
+  //////////////////////////////////////////////////////////////////////////////
   
   private int minParagraphLengthInCharacters;
   
@@ -37,6 +67,10 @@ public class PotthastJerichoExtractor extends JerichoHtmlSentenceExtractor {
   
   private final TextFilter wordMatchTextFilter;
 
+  //////////////////////////////////////////////////////////////////////////////
+  //                                CONSTRUCTORS                              //
+  //////////////////////////////////////////////////////////////////////////////
+
   public PotthastJerichoExtractor() {
     this.setMinParagraphLengthInCharacters(DEFAULT_MIN_PARAGRAPH_LENGTH);
     this.stopWordFilter = new StopWordFilter(true);
@@ -47,11 +81,17 @@ public class PotthastJerichoExtractor extends JerichoHtmlSentenceExtractor {
     this.setMinMatchingWordRatioInSentence(DEFAULT_MIN_WORD_TO_TOKEN_RATIO);
     this.setExtractLanguage(Locale.ENGLISH);
   }
+
+  //////////////////////////////////////////////////////////////////////////////
+  //                                CONFIGURATION                             //
+  //////////////////////////////////////////////////////////////////////////////
   
   @Override
   public void setExtractLanguages(final Collection<Locale> targetLanguages) {
     super.setExtractLanguages(targetLanguages);
-    this.stopWordFilter.retainStopWordLists(targetLanguages);
+    if (this.stopWordFilter != null) {
+      this.stopWordFilter.retainStopWordLists(targetLanguages);
+    }
   }
   
   public void setMinParagraphLengthInCharacters(
@@ -90,6 +130,15 @@ public class PotthastJerichoExtractor extends JerichoHtmlSentenceExtractor {
   }
   
   @Override
+  public void configure(final CommandLine config) {
+    super.configure(config);
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+  //                               FUNCTIONALITY                              //
+  //////////////////////////////////////////////////////////////////////////////
+  
+  @Override
   protected boolean isValidParagraph(
       final String paragraph, final Locale paragraphLanguage) {
     return paragraph.length() >= this.minParagraphLengthInCharacters;
@@ -103,14 +152,54 @@ public class PotthastJerichoExtractor extends JerichoHtmlSentenceExtractor {
         && this.wordMatchTextFilter.test(words, paragraphLanguage);
   }
 
-  public static void main(final String[] args) throws IOException {
-    final File inputFile = new File(args[0]);
-    final PotthastJerichoExtractor extractor = new PotthastJerichoExtractor();
+  //////////////////////////////////////////////////////////////////////////////
+  //                                   PROGRAM                                //
+  //////////////////////////////////////////////////////////////////////////////
+  
+  @Override
+  public Options addOptions(final Options options) {
+    super.addOptions(options);
+    
+    final Option minParagraphLengthOption = new Option(
+        SHORT_FLAG_MIN_PARAGRAPH_LENGTH, true,
+        "");
+    minParagraphLengthOption.setLongOpt(FLAG_MIN_PARAGRAPH_LENGTH);
+    minParagraphLengthOption.setArgName("min");
+    options.addOption(minParagraphLengthOption);
+    
+    final Option minStopWordsOption = new Option(
+        SHORT_FLAG_MIN_STOP_WORDS, true,
+        "");
+    minStopWordsOption.setLongOpt(FLAG_MIN_STOP_WORDS);
+    minStopWordsOption.setArgName("min");
+    options.addOption(minStopWordsOption);
+    
+    final Option minStopWordRatioOption = new Option(
+        SHORT_FLAG_MIN_STOP_WORD_RATIO, true,
+        "");
+    minStopWordRatioOption.setLongOpt(FLAG_MIN_STOP_WORD_RATIO);
+    minStopWordRatioOption.setArgName("min");
+    options.addOption(minStopWordRatioOption);
+    
+    final Option minMatchingWordsOption = new Option(
+        SHORT_FLAG_MIN_MATCHING_WORDS, true,
+        "");
+    minMatchingWordsOption.setLongOpt(FLAG_MIN_MATCHING_WORDS);
+    minMatchingWordsOption.setArgName("min");
+    options.addOption(minMatchingWordsOption);
+    
+    final Option minMatchingWordRatioOption = new Option(
+        SHORT_FLAG_MIN_MATCHING_WORD_RATIO, true,
+        "");
+    minMatchingWordRatioOption.setLongOpt(FLAG_MIN_MATCHING_WORD_RATIO);
+    minMatchingWordRatioOption.setArgName("min");
+    options.addOption(minMatchingWordRatioOption);
+    
+    return options;
+  }
 
-    final String html = FileUtils.readFileToString(inputFile);
-    for (final String sentence : extractor.extractSentences(html)) {
-      System.out.println(sentence);
-    }
+  public static void main(final String[] args) throws Exception {
+    HtmlSentenceExtractor.main(args, PotthastJerichoExtractor.class);
   }
 
 }
