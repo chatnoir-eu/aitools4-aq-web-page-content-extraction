@@ -220,7 +220,7 @@ public abstract class HtmlSentenceExtractor {
     }
     final String mode = args[0];
     final String[] reducedArgs = new String[args.length - 1];
-    System.arraycopy(args, 0, reducedArgs, 0, reducedArgs.length);
+    System.arraycopy(args, 1, reducedArgs, 0, reducedArgs.length);
 
     final CommandLineParser parser = new GnuParser();
     try {
