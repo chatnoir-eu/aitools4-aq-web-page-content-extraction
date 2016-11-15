@@ -1,5 +1,6 @@
 package de.aitools.aq.text;
 
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Locale;
@@ -54,7 +55,7 @@ public class StopWordFilter extends WordFilter {
     predicate.addStopWords(words);
   }
   
-  public void retainStopWordLists(final Set<Locale> languages) {
+  public void retainStopWordLists(final Collection<Locale> languages) {
     this.stopWordLists.keySet().removeIf(
         language -> !languages.contains(language));
   }

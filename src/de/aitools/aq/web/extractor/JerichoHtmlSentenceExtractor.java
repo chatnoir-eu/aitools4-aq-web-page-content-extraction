@@ -1,7 +1,8 @@
 package de.aitools.aq.web.extractor;
 
-import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -10,11 +11,9 @@ import java.util.Set;
 import java.util.function.Function;
 
 import org.apache.commons.cli.CommandLine;
-import org.apache.commons.cli.CommandLineParser;
-import org.apache.commons.cli.GnuParser;
 import org.apache.commons.cli.Option;
+import org.apache.commons.cli.OptionGroup;
 import org.apache.commons.cli.Options;
-import org.apache.commons.cli.ParseException;
 
 import com.ibm.icu.text.BreakIterator;
 
@@ -25,49 +24,112 @@ import net.htmlparser.jericho.Source;
 
 public class JerichoHtmlSentenceExtractor extends HtmlSentenceExtractor {
 
-  private Set<Locale> targetLanguages;
+  //////////////////////////////////////////////////////////////////////////////
+  //                                  CONSTANTS                               //
+  //////////////////////////////////////////////////////////////////////////////
+  
+  private static String SHORT_FLAG_EXTRACT_ALL_LANGUAGES = "la";
+  
+  private static String FLAG_EXTRACT_ALL_LANGUAGES = "language-extract-all";
+  
+  private static String SHORT_FLAG_EXTRACT_LANGUAGES = "le";
+  
+  private static String FLAG_EXTRACT_LANGUAGES = "language-extract";
+  
+  private static String SHORT_FLAG_USE_LANGUAGE = "lu";
+  
+  private static String FLAG_USE_LANGUAGE = "language-use";
+  
+  private static String SHORT_FLAG_DO_NOT_SEPARATE_PARAGRAPHS = "pn";
+  
+  private static String FLAG_DO_NOT_SEPARATE_PARAGRAPHS = "separate-paragraphs-not";
+  
+  private static String SHORT_FLAG_PARAGRAPH_SEPARATOR = "pw";
+  
+  private static String FLAG_PARAGRAPH_SEPARATOR = "separate-paragraphs-with";
+
+  //////////////////////////////////////////////////////////////////////////////
+  //                                   MEMBERS                                //
+  //////////////////////////////////////////////////////////////////////////////
+
+  private Set<String> targetLanguages;
 
   private Function<String, Locale> languageDetector;
   
   private String paragraphSeparator;
   
   private boolean separateParagraphs;
+
+  //////////////////////////////////////////////////////////////////////////////
+  //                                CONSTRUCTORS                              //
+  //////////////////////////////////////////////////////////////////////////////
   
   public JerichoHtmlSentenceExtractor() {
-    this.setTargetLanguage(Locale.ENGLISH);
-    final LanguageDetector languageDetector = new LanguageDetector();
-    this.setLanguageDetector(text -> languageDetector.detect(text));
+    this.setExtractLanguage(Locale.ENGLISH);
     this.setDoNotSeparateParagraphs();
   }
 
-  public Set<Locale> getTargetLanguages() {
+  //////////////////////////////////////////////////////////////////////////////
+  //                                   GETTER                                 //
+  //////////////////////////////////////////////////////////////////////////////
+
+  public Set<String> getTargetLanguages() {
     return Collections.unmodifiableSet(this.targetLanguages);
   }
   
   public Function<String, Locale> getLanguageDetector() {
+    if (this.languageDetector == null) {
+      final LanguageDetector languageDetector = new LanguageDetector();
+      this.setLanguageDetector(text -> languageDetector.detect(text));
+    }
     return this.languageDetector;
   }
   
   public String getParagraphSeparator() {
     return this.paragraphSeparator;
   }
+
+  //////////////////////////////////////////////////////////////////////////////
+  //                                CONFIGURATION                             //
+  //////////////////////////////////////////////////////////////////////////////
   
   public void setExtractAllLanguages() {
     this.targetLanguages = null;
+    this.languageDetector = null;
   }
 
-  public void setTargetLanguages(final Set<Locale> targetLanguages) {
-    this.targetLanguages = new HashSet<>(targetLanguages);
+  public void setExtractLanguages(final String... targetLanguages) {
+    final List<Locale> locales = new ArrayList<>(targetLanguages.length);
+    for (final String targetLanguage : targetLanguages) {
+      locales.add(Locale.forLanguageTag(targetLanguage));
+    }
+    this.setExtractLanguages(locales);
+  }
+
+  public void setExtractLanguages(final Locale... targetLanguages) {
+    this.setExtractLanguages(Arrays.asList(targetLanguages));
+  }
+
+  public void setExtractLanguages(final Collection<Locale> targetLanguages) {
+    this.targetLanguages = new HashSet<>(targetLanguages.size());
+    for (final Locale targetLanguage : targetLanguages) {
+      this.targetLanguages.add(targetLanguage.getLanguage());
+    }
+    this.languageDetector = null;
   }
   
-  public void setTargetLanguage(final Locale targetLanguage) {
-    this.setTargetLanguages(Collections.singleton(targetLanguage));
+  public void setExtractLanguage(final Locale targetLanguage) {
+    this.setExtractLanguages(Collections.singleton(targetLanguage));
   }
   
-  public void setUseFixedLanguage(final Locale language) {
+  public void setUseLanguage(final String language) {
+    this.setUseLanguage(Locale.forLanguageTag(language));
+  }
+  
+  public void setUseLanguage(final Locale language) {
     if (language == null) { throw new NullPointerException(); }
+    this.setExtractLanguage(language);
     this.setLanguageDetector(text -> language);
-    this.setTargetLanguage(language);
   }
   
   public void setLanguageDetector(
@@ -86,9 +148,42 @@ public class JerichoHtmlSentenceExtractor extends HtmlSentenceExtractor {
     this.paragraphSeparator = paragraphSeparator;
     this.separateParagraphs = true;
   }
+  
+  @Override
+  public void configure(final CommandLine config) {
+    super.configure(config);
+    final String[] targetLanguages =
+        config.getOptionValues(FLAG_EXTRACT_LANGUAGES);
+    final boolean detectAll =
+        config.hasOption(FLAG_EXTRACT_ALL_LANGUAGES);
+    final String useLanguage =
+        config.getOptionValue(FLAG_USE_LANGUAGE);
+    final String paragraphSeparator =
+        config.getOptionValue(FLAG_PARAGRAPH_SEPARATOR);
+    final boolean doNotSeparateParagraphs =
+        config.hasOption(FLAG_DO_NOT_SEPARATE_PARAGRAPHS);
+    
+    if (detectAll) {
+      this.setExtractAllLanguages();
+    } else if (targetLanguages != null) {
+      this.setExtractLanguages(targetLanguages);
+    } else if (useLanguage != null) {
+      this.setUseLanguage(useLanguage);
+    }
+    
+    if (doNotSeparateParagraphs) {
+      this.setDoNotSeparateParagraphs();
+    } else if (paragraphSeparator != null) {
+      this.setParagraphSeparator(paragraphSeparator);
+    }
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+  //                               FUNCTIONALITY                              //
+  //////////////////////////////////////////////////////////////////////////////
 
   @Override
-  public List<String> extractSentences(final String htmlInput)
+  protected List<String> extract(final String htmlInput)
   throws NullPointerException, IllegalArgumentException {
     if (htmlInput == null) {
       throw new NullPointerException();
@@ -144,14 +239,16 @@ public class JerichoHtmlSentenceExtractor extends HtmlSentenceExtractor {
 
   protected List<String> extractSentencesFromParagraph(
       final String paragraph, final Locale paragraphLanguage) {
-    // they are not threadsafe, so we create a new one each time
+    // they are not thread-safe, so we create a new one each time
     final BreakIterator segmenter =
         BreakIterator.getSentenceInstance(paragraphLanguage);
 
     final List<String> sentences = new ArrayList<String>();
     for (final String sentence : this.getSegments(paragraph, segmenter)) {
-      if (!this.isValidSentence(sentence, paragraphLanguage)) {
-        sentences.add(sentence);
+      if (!sentence.isEmpty()) {
+        if (this.isValidSentence(sentence, paragraphLanguage)) {
+          sentences.add(sentence);
+        }
       }
     }
     return sentences;
@@ -168,7 +265,7 @@ public class JerichoHtmlSentenceExtractor extends HtmlSentenceExtractor {
   }
   
   protected Locale detectLanguage(final String text) {
-    final Locale detectedLanguage = this.languageDetector.apply(text);
+    final Locale detectedLanguage = this.getLanguageDetector().apply(text);
     if (!this.isTargetLanguage(detectedLanguage)) { return null; }
     return detectedLanguage;
   }
@@ -177,7 +274,7 @@ public class JerichoHtmlSentenceExtractor extends HtmlSentenceExtractor {
     if (language == null) { return false; }
 
     return this.targetLanguages == null
-        || this.targetLanguages.contains(language);
+        || this.targetLanguages.contains(language.getLanguage());
   }
 
   protected String normalizeWhitespace(final String text) {
@@ -192,70 +289,66 @@ public class JerichoHtmlSentenceExtractor extends HtmlSentenceExtractor {
     int begin = segmenter.first();
     int end = segmenter.next();
     while (end != BreakIterator.DONE) {
-      segments.add(text.substring(begin, end));
+      segments.add(text.substring(begin, end).trim());
       begin = end;
       end = segmenter.next();
     }
 
     return segments;
   }
-  
-  protected static Options createOptions() {
-    return JerichoHtmlSentenceExtractor.createOptions("");
-  }
-  
-  public void configure(final String prefix, final CommandLine config) {
-    final String[] targetLanguages =
-        config.getOptionValues(prefix + "detect-languages");
-    final boolean detectAll =
-        config.hasOption(prefix + "detect-all-languages");
-    final String useLanguage =
-        config.getOptionValue(prefix + "use-language");
-    final String paragraphSeparator =
-        config.getOptionValue(prefix + "separate-paragraphs-with");
-    final boolean doNotSeparateParagraphs =
-        config.hasOption(prefix + "do-not-separate-paragraphs");
-    
-    if (detectAll) {
-      if (targetLanguages != null || useLanguage != null) {
-        throw new IllegalStateException("Conflicting options: ");
-      }
-      this.setExtractAllLanguages();
-    }
-  }
-  
-  protected static Options createOptions(final String prefix) {
-    final Options options = new Options();
-    final Option targetLanguagesOption =
-        new Option(prefix + "detect-languages", true, "");
-    targetLanguagesOption.setValueSeparator(',');
-    options.addOption(targetLanguagesOption);
-    options.addOption(prefix + "detect-all-languages", false, "");
-    options.addOption(prefix + "use-language", true, "");
-    options.addOption(prefix + "separate-paragraphs-with", true, "");
-    options.addOption(prefix + "do-not-separate-paragraphs", true, "");
-    return options;
-  }
-  
-  protected static Options addIOOptions(final Options options) {
-    final Option inputOption = new Option("input-files", "");
-    inputOption.setArgs(Option.UNLIMITED_VALUES);
-    inputOption.setRequired(true);
-    
-    final Option outputOption = new Option("output-directory", true, "");
-    outputOption.setRequired(true);
-    options.addOption(outputOption);
-    return options;
-  }
-  
-  public static void main(final String[] args)
-  throws ParseException, IOException {
-    final CommandLineParser parser = new GnuParser();
-    final Options options =
-        JerichoHtmlSentenceExtractor.addIOOptions(
-            JerichoHtmlSentenceExtractor.createOptions());
 
-    final CommandLine config = parser.parse(options, args);
+  //////////////////////////////////////////////////////////////////////////////
+  //                                   PROGRAM                                //
+  //////////////////////////////////////////////////////////////////////////////
+  
+  @Override
+  public Options addOptions(final Options options) {
+    super.addOptions(options);
+    final OptionGroup languages = new OptionGroup();
+    final Option targetLanguagesOption =
+        new Option(SHORT_FLAG_EXTRACT_LANGUAGES, true,
+            "");
+    targetLanguagesOption.setLongOpt(FLAG_EXTRACT_LANGUAGES);
+    targetLanguagesOption.setArgs(Option.UNLIMITED_VALUES);
+    targetLanguagesOption.setValueSeparator(',');
+    targetLanguagesOption.setArgName("lang,lang,...");
+    languages.addOption(targetLanguagesOption);
+    
+    final Option allLanguagesOption =
+        new Option(SHORT_FLAG_EXTRACT_ALL_LANGUAGES, false,
+            "");
+    allLanguagesOption.setLongOpt(FLAG_EXTRACT_ALL_LANGUAGES);
+    languages.addOption(allLanguagesOption);
+    
+    final Option useLanguageOption = new Option(SHORT_FLAG_USE_LANGUAGE, true,
+        "");
+    useLanguageOption.setLongOpt(FLAG_USE_LANGUAGE);
+    useLanguageOption.setArgName("lang");
+    languages.addOption(useLanguageOption);
+    options.addOptionGroup(languages);
+    
+    
+    
+    final OptionGroup paragraphs = new OptionGroup();
+    final Option paragraphSeparatorOption = new Option(
+        SHORT_FLAG_PARAGRAPH_SEPARATOR, true,
+            "");
+    paragraphSeparatorOption.setLongOpt(FLAG_PARAGRAPH_SEPARATOR);
+    paragraphSeparatorOption.setArgName("sep");
+    paragraphs.addOption(paragraphSeparatorOption);
+    
+    final Option paragraphNotSeparateOption = new Option(
+        SHORT_FLAG_DO_NOT_SEPARATE_PARAGRAPHS, false,
+        "");
+    paragraphNotSeparateOption.setLongOpt(FLAG_DO_NOT_SEPARATE_PARAGRAPHS);
+    paragraphs.addOption(paragraphNotSeparateOption);
+    options.addOptionGroup(paragraphs);
+
+    return options;
+  }
+  
+  public static void main(final String[] args) throws Exception {
+    HtmlSentenceExtractor.main(args, JerichoHtmlSentenceExtractor.class);
   }
 
 }
