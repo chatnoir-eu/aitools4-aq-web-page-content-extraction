@@ -27,6 +27,13 @@ import edu.cmu.lemurproject.WarcHTMLResponseRecord;
 import edu.cmu.lemurproject.WarcRecord;
 import edu.cmu.lemurproject.WritableWarcRecord;
 
+/**
+ * 
+ *
+ * @author johannes.kiesel@uni-weimar.de
+ * @version $Date$
+ *
+ */
 public class HadoopHtmlSentenceExtractionTool implements Tool {
 
   //////////////////////////////////////////////////////////////////////////////
@@ -178,7 +185,7 @@ public class HadoopHtmlSentenceExtractionTool implements Tool {
       final WarcRecord warcRecord = value.getRecord();
       List<String> sentences = null;
       try {
-        final String html = HtmlSentenceExtractor.extractHtml(warcRecord);
+        final String html = Warcs.getHtml(warcRecord);
         sentences = this.extractor.extractSentences(html);
       } catch (final Throwable e) {
         final Throwable cause = e.getCause();
