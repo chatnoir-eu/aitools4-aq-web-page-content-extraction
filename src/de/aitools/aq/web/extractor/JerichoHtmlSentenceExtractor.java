@@ -361,11 +361,6 @@ public class JerichoHtmlSentenceExtractor extends HtmlSentenceExtractor {
     return sentences;
   }
   
-  /**
-   * Renders the HTML page with Jericho {@link Renderer}, normalizes sequences
-   * of whitespace characters to a single whitespace, and returns the list of
-   * paragraphs. Return <tt>null</tt> on a fatal rendering error.
-   */
   protected List<String> extractParagraphs(final String htmlInput) {
     try {
       final Source source = new Source(htmlInput);
@@ -384,12 +379,6 @@ public class JerichoHtmlSentenceExtractor extends HtmlSentenceExtractor {
     }
   }
 
-  /**
-   * Detects the language of the paragraph, checks whether it is a target
-   * language and it {@link #isValidParagraph(String, Locale)}, and returns the
-   * sentences from it. Returns an empty list when the paragraph is empty, from
-   * a non-target language, or not valid.
-   */
   protected List<String> extractSentencesFromParagraph(final String paragraph) {
     final Locale paragraphLanguage = this.detectLanguage(paragraph);
     if (paragraphLanguage == null
@@ -399,11 +388,6 @@ public class JerichoHtmlSentenceExtractor extends HtmlSentenceExtractor {
     return this.extractSentencesFromParagraph(paragraph, paragraphLanguage);
   }
 
-  /**
-   * Extract sentence from the given paragraph of given language. This is
-   * called after it was checked that the paragraph is in a target language and
-   * valid.
-   */
   protected List<String> extractSentencesFromParagraph(
       final String paragraph, final Locale paragraphLanguage) {
     // they are not thread-safe, so we create a new one each time
@@ -421,48 +405,22 @@ public class JerichoHtmlSentenceExtractor extends HtmlSentenceExtractor {
     return sentences;
   }
   
-  /**
-   * Checks whether given paragraph of given language should be extracted.
-   * <p>
-   * The default implementation of this method always return true.
-   * </p>
-   */
   protected boolean isValidParagraph(
       final String paragraph, final Locale paragraphLanguage) {
     return true;
   }
   
-  /**
-   * Checks whether given sentence of given language should be extracted.
-   * <p>
-   * The sentence is from a paragraph of given language that is valid according
-   * to {@link #isValidParagraph(String, Locale)}.
-   * </p><p>
-   * The default implementation of this method always return true.
-   * </p>
-   */
   protected boolean isValidSentence(
       final String sentence, final Locale paragraphLanguage) {
     return true;
   }
   
-  /**
-   * Detects the language of the text using the language detector (see
-   * {@link #setLanguageDetector(Function)}) and return the corresponding locale
-   * if it is a target language (see {@link #setExtractLanguages(Collection)}).
-   * Returns <tt>null</tt> if the language can not be detected or it is not a
-   * target language.
-   */
   protected Locale detectLanguage(final String text) {
     final Locale detectedLanguage = this.getLanguageDetector().apply(text);
     if (!this.isTargetLanguage(detectedLanguage)) { return null; }
     return detectedLanguage;
   }
 
-  /**
-   * Checks whether the given language is a target language.
-   * @see #setExtractLanguages(Locale...)
-   */
   protected boolean isTargetLanguage(final Locale language) {
     if (language == null) { return false; }
 
@@ -470,16 +428,10 @@ public class JerichoHtmlSentenceExtractor extends HtmlSentenceExtractor {
         || this.targetLanguages.contains(language.getLanguage());
   }
 
-  /**
-   * Normalizes sequences of whitespace characters and trims the text.
-   */
   protected String normalizeWhitespace(final String text) {
     return text.replaceAll("\\s+", " ").trim();
   }
   
-  /**
-   * Uses given break iterator to segment the text.
-   */
   protected List<String> getSegments(
       final String text, final BreakIterator segmenter) {
     segmenter.setText(text);
@@ -506,10 +458,7 @@ public class JerichoHtmlSentenceExtractor extends HtmlSentenceExtractor {
     final OptionGroup languages = new OptionGroup();
     final Option targetLanguagesOption =
         new Option(SHORT_FLAG_EXTRACT_LANGUAGES, true,
-            "Configures this extractor to extract sentences from paragraphs "
-            + "that are classified as having the specified languages. "
-            + "Languages should be ISO codes like 'en', 'de', and so on and "
-            + "should be provided as comma-separated list (e.g., 'en,de')");
+            "");
     targetLanguagesOption.setLongOpt(FLAG_EXTRACT_LANGUAGES);
     targetLanguagesOption.setArgs(Option.UNLIMITED_VALUES);
     targetLanguagesOption.setValueSeparator(',');
@@ -518,16 +467,12 @@ public class JerichoHtmlSentenceExtractor extends HtmlSentenceExtractor {
     
     final Option allLanguagesOption =
         new Option(SHORT_FLAG_EXTRACT_ALL_LANGUAGES, false,
-            "Configures this extractor to extract sentences from paragraphs of "
-            + "all languages");
+            "");
     allLanguagesOption.setLongOpt(FLAG_EXTRACT_ALL_LANGUAGES);
     languages.addOption(allLanguagesOption);
     
     final Option useLanguageOption = new Option(SHORT_FLAG_USE_LANGUAGE, true,
-        "Configures this extractor to extract sentences from all paragraphs "
-        + "and see each paragraph as being written in the given language "
-        + "without doing a language detection. The language should be an ISO "
-        + "code like 'en', 'de', and so on");
+        "");
     useLanguageOption.setLongOpt(FLAG_USE_LANGUAGE);
     useLanguageOption.setArgName("lang");
     languages.addOption(useLanguageOption);
@@ -538,16 +483,14 @@ public class JerichoHtmlSentenceExtractor extends HtmlSentenceExtractor {
     final OptionGroup paragraphs = new OptionGroup();
     final Option paragraphSeparatorOption = new Option(
         SHORT_FLAG_PARAGRAPH_SEPARATOR, true,
-            "Configures this extractor to add a separate line between "
-            + "sentences from a new paragraph that contains <sep>");
+            "");
     paragraphSeparatorOption.setLongOpt(FLAG_PARAGRAPH_SEPARATOR);
     paragraphSeparatorOption.setArgName("sep");
     paragraphs.addOption(paragraphSeparatorOption);
     
     final Option paragraphNotSeparateOption = new Option(
         SHORT_FLAG_DO_NOT_SEPARATE_PARAGRAPHS, false,
-        "Configures this extractor to not add a separate line between "
-        + "sentences from a new paragraph");
+        "");
     paragraphNotSeparateOption.setLongOpt(FLAG_DO_NOT_SEPARATE_PARAGRAPHS);
     paragraphs.addOption(paragraphNotSeparateOption);
     options.addOptionGroup(paragraphs);
