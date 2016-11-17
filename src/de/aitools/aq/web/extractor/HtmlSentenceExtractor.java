@@ -57,7 +57,7 @@ import edu.cmu.lemurproject.WarcRecord;
  * </p>
  *
  * @author johannes.kiesel@uni-weimar.de
- * @version $date:$
+ * @version $Date$
  *
  */
 public abstract class HtmlSentenceExtractor {
