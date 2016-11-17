@@ -32,6 +32,34 @@ import org.apache.hadoop.util.ToolRunner;
 
 import edu.cmu.lemurproject.WarcRecord;
 
+/**
+ * Abstract base class for methods to extract sentences from HTML documents.
+ * 
+ * <p>
+ * This class brings a timeout functionality, support for WARCRecords, and an
+ * extensible command line interface to be used for both local and Hadoop jobs.
+ * </p><p>
+ * Currently, it only supports reading HTML files when running locally and only
+ * WARC files when running on Hadoop. Every class that extends this class will
+ * automatically inherit this functionality.
+ * </p><p>
+ * When you extend this class, and your method is not configurable, you only
+ * have to implement the {@link #extract(String)} method and add the following
+ * main method:
+ * <pre>
+ * public static void main(final String[] args) throws Exception {
+ *   HtmlSentenceExtractor.main(args, MySentenceExtractor.class);
+ * }
+ * </pre>
+ * Where you replace <tt>MySentenceExtractor</tt> with the name of your class.
+ * </p><p>
+ * When you want to add 
+ * </p>
+ *
+ * @author johannes.kiesel@uni-weimar.de
+ * @version $date:$
+ *
+ */
 public abstract class HtmlSentenceExtractor {
 
   //////////////////////////////////////////////////////////////////////////////
