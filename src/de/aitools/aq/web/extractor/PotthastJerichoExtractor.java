@@ -148,6 +148,7 @@ public class PotthastJerichoExtractor extends JerichoHtmlSentenceExtractor {
   protected boolean isValidSentence(
       final String sentence, final Locale paragraphLanguage) {
     final List<String> words = WordFilter.toWords(sentence, paragraphLanguage);
+    
     return this.stopWordTextFilter.test(words, paragraphLanguage)
         && this.wordMatchTextFilter.test(words, paragraphLanguage);
   }
