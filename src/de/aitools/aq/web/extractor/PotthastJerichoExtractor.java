@@ -130,7 +130,7 @@ public class PotthastJerichoExtractor extends JerichoHtmlSentenceExtractor {
   }
   
   /**
-   * Sets the minimum number of stop words a sentence must contain to not be
+   * Sets the minimum number of stop words a sentence must contain to be not
    * discarded. Stop word lists are used based on the detected paragraph
    * language.
    */
@@ -138,52 +138,27 @@ public class PotthastJerichoExtractor extends JerichoHtmlSentenceExtractor {
       final int minStopWordsInSentence) {
     this.stopWordTextFilter.setMinAbsolute(minStopWordsInSentence);
   }
-
-  /**
-   * Sets the minimum ratio of stop words relative to all words a sentence must
-   * contain to not be discarded. Stop word lists are used based on the detected
-   * paragraph language.
-   */
+  
   public void setMinStopWordRatioInSentence(
       final double minStopWordRatioInSentence) {
     this.stopWordTextFilter.setMinRatio(minStopWordRatioInSentence);
   }
   
-  /**
-   * Sets the minimum number of matching words a sentence must contain to not be
-   * discarded. Matching words are defined by the {@link WordMatchFilter} (see
-   * {@link #setMatchingWordFilter(WordMatchFilter)}), and are by default words
-   * that contain only alphabetic characters, possibly separated by hyphens.
-   */
   public void setMinMatchingWordsInSentence(
       final int minMatchingWordsInSentence) {
     this.wordMatchTextFilter.setMinAbsolute(minMatchingWordsInSentence);
   }
-
-  /**
-   * Sets the minimum ratio of matching words relative to all words a sentence
-   * must contain to not be discarded. Matching words are defined by the
-   * {@link WordMatchFilter} (see
-   * {@link #setMatchingWordFilter(WordMatchFilter)}), and are by default words
-   * that contain only alphabetic characters, possibly separated by hyphens.
-   */
+  
   public void setMinMatchingWordRatioInSentence(
       final double minMatchingWordRatioInSentence) {
     this.wordMatchTextFilter.setMinRatio(minMatchingWordRatioInSentence);
   }
   
-  /**
-   * Sets the stop word filter to be used to determine stop words in a sentence.
-   */
   public void setStopWordFilter(final StopWordFilter stopWordFilter) {
     this.stopWordTextFilter.setWordFilter(stopWordFilter);
     this.stopWordFilter = stopWordFilter;
   }
-
-  /**
-   * Sets the word filter to be used to determine "matching" words in a
-   * sentence.
-   */
+  
   public void setMatchingWordFilter(final WordMatchFilter wordMatchFilter) {
     this.wordMatchTextFilter.setWordFilter(wordMatchFilter);
     this.wordMatchFilter = wordMatchFilter;
@@ -192,39 +167,6 @@ public class PotthastJerichoExtractor extends JerichoHtmlSentenceExtractor {
   @Override
   public void configure(final CommandLine config) {
     super.configure(config);
-    
-    final String minParagraphLength =
-        config.getOptionValue(FLAG_MIN_PARAGRAPH_LENGTH);
-    if (minParagraphLength != null) {
-      this.setMinParagraphLengthInCharacters(
-          Integer.parseInt(minParagraphLength));
-    }
-    
-    final String minStopWords =
-        config.getOptionValue(FLAG_MIN_STOP_WORDS);
-    if (minStopWords != null) {
-      this.setMinStopWordsInSentence(
-          Integer.parseInt(minStopWords));
-    }
-    final String minStopWordRatio =
-        config.getOptionValue(FLAG_MIN_STOP_WORD_RATIO);
-    if (minStopWordRatio != null) {
-      this.setMinStopWordRatioInSentence(
-          Double.parseDouble(minStopWordRatio));
-    }
-    
-    final String minMatchingWords =
-        config.getOptionValue(FLAG_MIN_MATCHING_WORDS);
-    if (minMatchingWords != null) {
-      this.setMinMatchingWordsInSentence(
-          Integer.parseInt(minMatchingWords));
-    }
-    final String minMatchingWordRatio =
-        config.getOptionValue(FLAG_MIN_MATCHING_WORD_RATIO);
-    if (minMatchingWordRatio != null) {
-      this.setMinMatchingWordRatioInSentence(
-          Double.parseDouble(minMatchingWordRatio));
-    }
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -256,45 +198,35 @@ public class PotthastJerichoExtractor extends JerichoHtmlSentenceExtractor {
     
     final Option minParagraphLengthOption = new Option(
         SHORT_FLAG_MIN_PARAGRAPH_LENGTH, true,
-        "Sets the size threshold for paragraphs (in number of characters) to "
-        + "not be discarded (Current: " + this.minParagraphLengthInCharacters
-        + ")");
+        "");
     minParagraphLengthOption.setLongOpt(FLAG_MIN_PARAGRAPH_LENGTH);
     minParagraphLengthOption.setArgName("min");
     options.addOption(minParagraphLengthOption);
     
     final Option minStopWordsOption = new Option(
         SHORT_FLAG_MIN_STOP_WORDS, true,
-        "Sets the minimum number of stop words a sentence must contain to not "
-        + "be discarded. Stop word lists are used based on the detected "
-        + "paragraph language (Current: "
-        + this.stopWordTextFilter.getMinAbsolute() + ")");
+        "");
     minStopWordsOption.setLongOpt(FLAG_MIN_STOP_WORDS);
     minStopWordsOption.setArgName("min");
     options.addOption(minStopWordsOption);
     
     final Option minStopWordRatioOption = new Option(
         SHORT_FLAG_MIN_STOP_WORD_RATIO, true,
-        "Sets the minimum ratio of stop words relative to all words a sentence "
-        + "must contain to not be discarded (Current: "
-        + this.stopWordTextFilter.getMinRatio() + ")");
+        "");
     minStopWordRatioOption.setLongOpt(FLAG_MIN_STOP_WORD_RATIO);
     minStopWordRatioOption.setArgName("min");
     options.addOption(minStopWordRatioOption);
     
     final Option minMatchingWordsOption = new Option(
         SHORT_FLAG_MIN_MATCHING_WORDS, true,
-        "Sets the minimum number of matching words a sentence must contain to "
-        + "not be discarded. Matching words contain only alphabetic "
-        + "characters, possibly separated by hyphens.");
+        "");
     minMatchingWordsOption.setLongOpt(FLAG_MIN_MATCHING_WORDS);
     minMatchingWordsOption.setArgName("min");
     options.addOption(minMatchingWordsOption);
     
     final Option minMatchingWordRatioOption = new Option(
         SHORT_FLAG_MIN_MATCHING_WORD_RATIO, true,
-        "Sets the minimum ratio of matching words relative to all words a "
-        + "sentence must contain to not be discarded.");
+        "");
     minMatchingWordRatioOption.setLongOpt(FLAG_MIN_MATCHING_WORD_RATIO);
     minMatchingWordRatioOption.setArgName("min");
     options.addOption(minMatchingWordRatioOption);

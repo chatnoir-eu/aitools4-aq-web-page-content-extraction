@@ -10,13 +10,6 @@ import java.util.function.Predicate;
 
 import de.aitools.ie.stopwords.StopWordList;
 
-/**
- * Filters words that are not stop words.
- *
- * @author johannes.kiesel@uni-weimar.de
- * @version $Date$
- *
- */
 public class StopWordFilter extends WordFilter {
   
   protected static final Set<String> NO_LIST_AVAILABLE = null;
@@ -24,36 +17,20 @@ public class StopWordFilter extends WordFilter {
   private final Map<Locale, StopWordPredicate> stopWordLists;
   
   private final boolean ignoreCase;
-
-  /**
-   * Create a new filter that discards all words that do not match a stop word
-   * in the stop word list (ignoring case) of the respective language.
-   */
+  
   public StopWordFilter() {
     this(true);
   }
-
-  /**
-   * Create a new filter that discards all words that do not match a stop word
-   * in the stop word list of the respective language.
-   * @param ignoreCase Whether stop words should be checked ignoring case
-   */
+  
   public StopWordFilter(final boolean ignoreCase) {
     this.stopWordLists = new HashMap<>();
     this.ignoreCase = ignoreCase;
   }
   
-  /**
-   * Checks whether this filter ignores the case of the stop words when
-   * matching.
-   */
   public boolean getIgnoresCase() {
     return this.ignoreCase;
   }
 
-  /**
-   * Adds given stop words to the list for the given language.
-   */
   public void addStopWords(
       final Locale language, final Iterable<String> words) {
     if (language == null) { throw new NullPointerException(); }
@@ -66,9 +43,6 @@ public class StopWordFilter extends WordFilter {
     predicate.addStopWords(words);
   }
 
-  /**
-   * Adds given stop words to the list for the given language.
-   */
   public void addStopWords(
       final Locale language, final String[] words) {
     if (language == null) { throw new NullPointerException(); }
@@ -80,25 +54,16 @@ public class StopWordFilter extends WordFilter {
     }
     predicate.addStopWords(words);
   }
-
-  /**
-   * Clears all stop word lists except those for the given languages.
-   */
+  
   public void retainStopWordLists(final Collection<Locale> languages) {
     this.stopWordLists.keySet().removeIf(
         language -> !languages.contains(language));
   }
- 
-  /**
-   * Clears all stop word lists.
-   */
+  
   public void clearStopWordLists() {
     this.stopWordLists.clear();
   }
-
-  /**
-   * Removes the stop word lists of the given language.
-   */
+  
   public void removeStopWords(final Locale language) {
     this.stopWordLists.remove(language);
   }
@@ -125,7 +90,7 @@ public class StopWordFilter extends WordFilter {
       return this.getPredicate(language);
     }
   }
-
+  
   protected class StopWordPredicate implements Predicate<String> {
     
     private final Set<String> stopWords;
