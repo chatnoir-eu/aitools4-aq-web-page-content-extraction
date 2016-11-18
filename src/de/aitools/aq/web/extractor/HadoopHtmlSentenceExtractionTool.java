@@ -21,12 +21,33 @@ import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
 import org.apache.hadoop.util.Tool;
+import org.apache.hadoop.util.ToolRunner;
 
 import edu.cmu.lemurproject.WarcFileInputFormat;
 import edu.cmu.lemurproject.WarcHTMLResponseRecord;
 import edu.cmu.lemurproject.WarcRecord;
 import edu.cmu.lemurproject.WritableWarcRecord;
 
+/**
+ * Class that runs an {@link HtmlSentenceExtractor} on Hadoop.
+ *
+ * <p>
+ * If you want to write a new extractor, you don't have to care about this
+ * class, as the {@link HtmlSentenceExtractor} base class does the interfacing
+ * for you.
+ * </p><p>
+ * When an extraction fails, this is just recorded in the counters of the job,
+ * but the mappers will continue and ignore this particular WARC record.
+ * </p><p>
+ * Currently, this only supports reading WARCs. Each mapper will write all
+ * extracted sentences line-by-line to an own gzipped file in the output
+ * directory.
+ * </p>
+ *
+ * @author johannes.kiesel@uni-weimar.de
+ * @version $Date$
+ *
+ */
 public class HadoopHtmlSentenceExtractionTool implements Tool {
 
   //////////////////////////////////////////////////////////////////////////////
@@ -47,6 +68,9 @@ public class HadoopHtmlSentenceExtractionTool implements Tool {
   //                                CONSTRUCTORS                              //
   //////////////////////////////////////////////////////////////////////////////
   
+  /**
+   * Creates a new tool.
+   */
   public HadoopHtmlSentenceExtractionTool() {
     this.configuration = null;
   }
@@ -65,6 +89,15 @@ public class HadoopHtmlSentenceExtractionTool implements Tool {
     this.configuration = configuration;
   }
   
+  /**
+   * Adds the extractor class information to the given configuration.
+   * <p>
+   * This configuration can then be passed to
+   * {@link ToolRunner#run(Configuration, Tool, String[])}.
+   * </p>
+   * @param configuration The configuration to change
+   * @param extractorClass The class of the extractor to use
+   */
   public static void configure(
       final Configuration configuration,
       final Class<? extends HtmlSentenceExtractor> extractorClass) {
@@ -119,6 +152,13 @@ public class HadoopHtmlSentenceExtractionTool implements Tool {
     return job.waitForCompletion(true) ? 0 : 1;
   }
 
+  /**
+   * Mapper to extract sentences from WARC files.
+   *
+   * @author johannes.kiesel@uni-weimar.de
+   * @version $Date$
+   *
+   */
   public static class WarcMapper
   extends Mapper<LongWritable, WritableWarcRecord, Text, Text> {
 
@@ -142,8 +182,7 @@ public class HadoopHtmlSentenceExtractionTool implements Tool {
     }
     
     @Override
-    protected void setup(final Context context)
-    throws IOException, InterruptedException {
+    protected void setup(final Context context) {
       final Configuration configuration = context.getConfiguration();
       
       try {
@@ -178,8 +217,8 @@ public class HadoopHtmlSentenceExtractionTool implements Tool {
       final WarcRecord warcRecord = value.getRecord();
       List<String> sentences = null;
       try {
-        final String html = HtmlSentenceExtractor.extractHtml(warcRecord);
-        sentences = this.extractor.extract(html);
+        final String html = Warcs.getHtml(warcRecord);
+        sentences = this.extractor.extractSentences(html);
       } catch (final Throwable e) {
         final Throwable cause = e.getCause();
         if (cause != null && cause instanceof TimeoutException) {
