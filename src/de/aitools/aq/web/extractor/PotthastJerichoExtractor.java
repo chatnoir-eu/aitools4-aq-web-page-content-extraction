@@ -192,39 +192,6 @@ public class PotthastJerichoExtractor extends JerichoHtmlSentenceExtractor {
   @Override
   public void configure(final CommandLine config) {
     super.configure(config);
-    
-    final String minParagraphLength =
-        config.getOptionValue(FLAG_MIN_PARAGRAPH_LENGTH);
-    if (minParagraphLength != null) {
-      this.setMinParagraphLengthInCharacters(
-          Integer.parseInt(minParagraphLength));
-    }
-    
-    final String minStopWords =
-        config.getOptionValue(FLAG_MIN_STOP_WORDS);
-    if (minStopWords != null) {
-      this.setMinStopWordsInSentence(
-          Integer.parseInt(minStopWords));
-    }
-    final String minStopWordRatio =
-        config.getOptionValue(FLAG_MIN_STOP_WORD_RATIO);
-    if (minStopWordRatio != null) {
-      this.setMinStopWordRatioInSentence(
-          Double.parseDouble(minStopWordRatio));
-    }
-    
-    final String minMatchingWords =
-        config.getOptionValue(FLAG_MIN_MATCHING_WORDS);
-    if (minMatchingWords != null) {
-      this.setMinMatchingWordsInSentence(
-          Integer.parseInt(minMatchingWords));
-    }
-    final String minMatchingWordRatio =
-        config.getOptionValue(FLAG_MIN_MATCHING_WORD_RATIO);
-    if (minMatchingWordRatio != null) {
-      this.setMinMatchingWordRatioInSentence(
-          Double.parseDouble(minMatchingWordRatio));
-    }
   }
 
   //////////////////////////////////////////////////////////////////////////////
