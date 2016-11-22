@@ -8,5 +8,6 @@
 	<classpathentry kind="src" path="/thirdparty-icu4j-4.8.1.1"/>
 	<classpathentry kind="src" path="/aitools3-ie-stopwords"/>
 	<classpathentry kind="src" path="/thirdparty-apache-commons-cli-1.2"/>
+	<classpathentry kind="src" path="/thirdparty-apache-httpcomponents-client-4.5.2"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

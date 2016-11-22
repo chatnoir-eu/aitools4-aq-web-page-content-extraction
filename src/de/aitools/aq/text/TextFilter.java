@@ -3,6 +3,13 @@ package de.aitools.aq.text;
 import java.util.List;
 import java.util.Locale;
 
+/**
+ * 
+ *
+ * @author johannes.kiesel@uni-weimar.de
+ * @version $Date$
+ *
+ */
 public class TextFilter {
   
   private WordFilter wordFilter;
