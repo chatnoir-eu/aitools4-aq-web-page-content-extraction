@@ -506,7 +506,10 @@ public class JerichoHtmlSentenceExtractor extends HtmlSentenceExtractor {
     final OptionGroup languages = new OptionGroup();
     final Option targetLanguagesOption =
         new Option(SHORT_FLAG_EXTRACT_LANGUAGES, true,
-            "");
+            "Configures this extractor to extract sentences from paragraphs "
+            + "that are classified as having the specified languages. "
+            + "Languages should be ISO codes like 'en', 'de', and so on and "
+            + "should be provided as comma-separated list (e.g., 'en,de')");
     targetLanguagesOption.setLongOpt(FLAG_EXTRACT_LANGUAGES);
     targetLanguagesOption.setArgs(Option.UNLIMITED_VALUES);
     targetLanguagesOption.setValueSeparator(',');
@@ -515,12 +518,16 @@ public class JerichoHtmlSentenceExtractor extends HtmlSentenceExtractor {
     
     final Option allLanguagesOption =
         new Option(SHORT_FLAG_EXTRACT_ALL_LANGUAGES, false,
-            "");
+            "Configures this extractor to extract sentences from paragraphs of "
+            + "all languages");
     allLanguagesOption.setLongOpt(FLAG_EXTRACT_ALL_LANGUAGES);
     languages.addOption(allLanguagesOption);
     
     final Option useLanguageOption = new Option(SHORT_FLAG_USE_LANGUAGE, true,
-        "");
+        "Configures this extractor to extract sentences from all paragraphs "
+        + "and see each paragraph as being written in the given language "
+        + "without doing a language detection. The language should be an ISO "
+        + "code like 'en', 'de', and so on");
     useLanguageOption.setLongOpt(FLAG_USE_LANGUAGE);
     useLanguageOption.setArgName("lang");
     languages.addOption(useLanguageOption);
@@ -531,14 +538,16 @@ public class JerichoHtmlSentenceExtractor extends HtmlSentenceExtractor {
     final OptionGroup paragraphs = new OptionGroup();
     final Option paragraphSeparatorOption = new Option(
         SHORT_FLAG_PARAGRAPH_SEPARATOR, true,
-            "");
+            "Configures this extractor to add a separate line between "
+            + "sentences from a new paragraph that contains <sep>");
     paragraphSeparatorOption.setLongOpt(FLAG_PARAGRAPH_SEPARATOR);
     paragraphSeparatorOption.setArgName("sep");
     paragraphs.addOption(paragraphSeparatorOption);
     
     final Option paragraphNotSeparateOption = new Option(
         SHORT_FLAG_DO_NOT_SEPARATE_PARAGRAPHS, false,
-        "");
+        "Configures this extractor to not add a separate line between "
+        + "sentences from a new paragraph");
     paragraphNotSeparateOption.setLongOpt(FLAG_DO_NOT_SEPARATE_PARAGRAPHS);
     paragraphs.addOption(paragraphNotSeparateOption);
     options.addOptionGroup(paragraphs);
