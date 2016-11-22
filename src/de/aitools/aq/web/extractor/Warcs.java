@@ -256,14 +256,5 @@ public class Warcs {
     final String defaultCharset = null;
     return EntityUtils.toString(entity, defaultCharset);
   }
-  
-  public static void main(String[] args) throws IOException {
-    System.out.println(Files.probeContentType(
-        new File("/home/johannes/tmp/hpn/0000000177/WARCPROX-20161121092710357-00000-2228-pcstein4-8000.warc.gz").toPath()));
-    System.out.println(Files.probeContentType(
-        new File("/home/johannes/tmp/hpn/0000000177/WARCPROX-20161121092710357-00000-2228-pcstein4-8000.warc").toPath()));
-    System.out.println(Files.probeContentType(
-        new File("/home/johannes/tmp/content-extraction/input/quanta.htm").toPath()));
-  }
 
 }
