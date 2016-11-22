@@ -2,12 +2,11 @@
 <classpath>
 	<classpathentry kind="src" path="src"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.8"/>
-	<classpathentry exported="true" kind="src" path="/thirdparty-jericho-html-3.3"/>
-	<classpathentry exported="true" kind="src" path="/thirdparty-apache-hadoop-2.5.2"/>
-	<classpathentry exported="true" kind="src" path="/aitools3-ie-languagedetection"/>
-	<classpathentry exported="true" kind="src" path="/thirdparty-icu4j-4.8.1.1"/>
-	<classpathentry exported="true" kind="src" path="/aitools3-ie-stopwords"/>
-	<classpathentry exported="true" kind="src" path="/thirdparty-apache-commons-cli-1.2"/>
-	<classpathentry combineaccessrules="false" exported="true" kind="src" path="/thirdparty-apache-httpcomponents-client-4.5.2"/>
+	<classpathentry kind="src" path="/thirdparty-jericho-html-3.3"/>
+	<classpathentry kind="src" path="/thirdparty-apache-hadoop-2.5.2"/>
+	<classpathentry kind="src" path="/aitools3-ie-languagedetection"/>
+	<classpathentry kind="src" path="/thirdparty-icu4j-4.8.1.1"/>
+	<classpathentry kind="src" path="/aitools3-ie-stopwords"/>
+	<classpathentry kind="src" path="/thirdparty-apache-commons-cli-1.2"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
