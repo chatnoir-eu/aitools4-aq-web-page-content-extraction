@@ -5,6 +5,7 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.nio.file.Files;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Queue;
@@ -16,6 +17,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.logging.Logger;
 
 import org.apache.commons.cli.AlreadySelectedException;
 import org.apache.commons.cli.CommandLine;
@@ -29,6 +31,8 @@ import org.apache.commons.cli.UnrecognizedOptionException;
 import org.apache.commons.io.FileUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.util.ToolRunner;
+
+import edu.cmu.lemurproject.WarcHTMLResponseRecord;
 
 /**
  * Abstract base class for methods to extract sentences from HTML documents.
@@ -81,6 +85,9 @@ public abstract class HtmlSentenceExtractor {
   //////////////////////////////////////////////////////////////////////////////
   //                                  CONSTANTS                               //
   //////////////////////////////////////////////////////////////////////////////
+  
+  private static final Logger LOGGER =
+      Logger.getLogger(HtmlSentenceExtractor.class.getName());
   
   /**
    * Value to use in {@link #setTimeoutInSeconds(int)} to specify that the
@@ -281,9 +288,9 @@ public abstract class HtmlSentenceExtractor {
   public Options addOptions(final Options options) {
     final Option inputOption = new Option(SHORT_FLAG_INPUT,
         "Sets the input files to extract the sentences from. In case of a "
-        + "directory, the directory is traversed recursively and all files are "
-        + "extracted. Currently only supports HTML files in local mode and "
-        + "WARC files in hadoop mode");
+        + "directory, the directory is traversed recursively and all HTML "
+        + "files are extracted. Currently only supports HTML files in local "
+        + "mode and WARC files in hadoop mode");
     inputOption.setLongOpt(FLAG_INPUT);
     inputOption.setArgName("file,file,...");
     inputOption.setArgs(Option.UNLIMITED_VALUES);
@@ -386,7 +393,8 @@ public abstract class HtmlSentenceExtractor {
   }
   
   private static void addInputRecursive(
-      final Queue<String> inputFileNames, final String inputFileName) {
+      final Queue<String> inputFileNames, final String inputFileName)
+  throws IOException {
     final File inputFile = new File(inputFileName);
     if (inputFile.isDirectory()) {
       for (final String child : inputFile.list()) {
@@ -394,7 +402,22 @@ public abstract class HtmlSentenceExtractor {
             inputFileNames, inputFileName + File.separatorChar + child);
       }
     } else {
-      inputFileNames.add(inputFileName);
+      final String contentType = Files.probeContentType(inputFile.toPath());
+      if (contentType == null) {
+        LOGGER.fine("Content type could not be determined " + inputFileName);
+      } else if (contentType.startsWith("text/html")) {
+        LOGGER.fine("Add text/html " + inputFileName);
+        inputFileNames.add(inputFileName);
+      } else if (inputFileName.endsWith(".warc")) {
+        LOGGER.fine("Add warc " + inputFileName);
+        inputFileNames.add(inputFileName);
+      } else if (inputFileName.endsWith(".warc.gz")) {
+        LOGGER.fine("Add warc.gz " + inputFileName);
+        inputFileNames.add(inputFileName);
+      } else {
+        LOGGER.fine("Unsupported content type '" + contentType
+            + "' for " + inputFileName);
+      }
     }
   }
   
@@ -402,7 +425,7 @@ public abstract class HtmlSentenceExtractor {
       final HtmlSentenceExtractor extractor,
       final CommandLine config)
   throws InterruptedException, InstantiationException,
-  IllegalAccessException {
+  IllegalAccessException, IOException {
     extractor.configure(config);
 
     final int numThreads =
@@ -430,22 +453,8 @@ public abstract class HtmlSentenceExtractor {
             for (String inputFileName = inputFileNames.poll();
                 inputFileName != null;
                 inputFileName = inputFileNames.poll()) {
-              final File inputFile = new File(inputFileName);
-              System.err.println("Extracting " + inputFileName);
-              try {
-                final List<String> sentences = extractor.extractSentences(
-                    FileUtils.readFileToString(inputFile));
-                if (writeNames) {
-                  writer.append("\n\n").append(inputFileName).append("\n");
-                }
-                for (final String sentence: sentences) {
-                  writer.append(sentence).append('\n');
-                }
-              } catch (final ExecutionException e) {
-                // Continue with next
-                System.err.println("EXTRACTION ERROR on parsing " + inputFile
-                    + ": " + e.getMessage());
-              }
+              HtmlSentenceExtractor.extractLocalFile(
+                  inputFileName, extractor, writer, writeNames);
             }
           } catch (final IOException e) {
             throw new UncheckedIOException(e);
@@ -457,6 +466,60 @@ public abstract class HtmlSentenceExtractor {
     
     for (final Thread thread : threads) {
       thread.join();
+    }
+  }
+  
+  private static void extractLocalFile(
+      final String inputFileName, final HtmlSentenceExtractor extractor,
+      final BufferedWriter writer, final boolean writeNames)
+  throws NullPointerException, IOException {
+    final File inputFile = new File(inputFileName);
+    System.err.println("Extracting " + inputFileName);
+    try {
+      if (Files.probeContentType(inputFile.toPath()).startsWith("text/html")) {
+        HtmlSentenceExtractor.extractLocalHtml(
+            FileUtils.readFileToString(inputFile), inputFileName, null, null,
+            extractor, writer, writeNames);
+      } else {
+        Warcs.getRecords(inputFile).forEachOrdered(record -> {
+          try {
+            final String html = Warcs.getHtml(record);
+            final WarcHTMLResponseRecord htmlRecord =
+                new WarcHTMLResponseRecord(record);
+            HtmlSentenceExtractor.extractLocalHtml(
+                html, inputFileName,
+                htmlRecord.getTargetURI(), htmlRecord.getTargetTrecID(),
+                extractor, writer, writeNames);
+          } catch (final Exception e) {}
+        });
+      }
+    } catch (final ExecutionException e) {
+      // Continue with next
+      System.err.println("EXTRACTION ERROR on parsing " + inputFile
+          + ": " + e.getMessage());
+    }
+  }
+  
+  private static void extractLocalHtml(
+      final String html, final String inputFileName,
+      final String uri, final String trecId,
+      final HtmlSentenceExtractor extractor, 
+      final BufferedWriter writer, final boolean writeNames)
+  throws NullPointerException, ExecutionException, IOException {
+    final List<String> sentences = extractor.extractSentences(html);
+    if (!sentences.isEmpty()) {
+      if (writeNames) {
+        writer.append("\n\n");
+        if (uri != null) { writer.append(uri); }
+        writer.append(' ');
+        if (trecId != null) { writer.append(trecId); }
+        writer.append(' ');
+        if (inputFileName != null) { writer.append(inputFileName); }
+        writer.append("\n");
+      }
+    }
+    for (final String sentence: sentences) {
+      writer.append(sentence).append('\n');
     }
   }
   
