@@ -1,7 +1,15 @@
 package de.aitools.aq.web.extractor;
 
+import java.io.DataInputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
 import edu.cmu.lemurproject.WarcRecord;
 
@@ -25,6 +33,28 @@ public class Warcs {
       "\r?\n\r?\n");
   
   private Warcs() { }
+  
+  public static Stream<WarcRecord> readRecords(final File input)
+  throws IOException {
+    return Warcs.readRecords(new FileInputStream(input));
+  }
+  
+  public static Stream<WarcRecord> readRecords(final InputStream input)
+  throws IOException {
+    return Warcs.readRecords(new DataInputStream(input));
+  }
+  
+  public static Stream<WarcRecord> readRecords(final DataInputStream input)
+  throws IOException {
+    final List<WarcRecord> records = new ArrayList<>();
+    WarcRecord record = WarcRecord.readNextWarcRecord(input);
+    while (record != null) {
+      records.add(record);
+      record = WarcRecord.readNextWarcRecord(input);
+    }
+    input.close();
+    return records.stream();
+  }
   
   /**
    * Gets the HTML part of a record or <tt>null</tt> if there is none or an
