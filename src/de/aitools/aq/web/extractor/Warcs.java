@@ -7,10 +7,10 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
-import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.logging.Logger;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 import java.util.zip.GZIPInputStream;
@@ -28,6 +28,7 @@ import org.apache.http.config.Lookup;
 import org.apache.http.config.RegistryBuilder;
 import org.apache.http.entity.BasicHttpEntity;
 import org.apache.http.entity.ContentLengthStrategy;
+import org.apache.http.impl.DefaultHttpResponseFactory;
 import org.apache.http.impl.entity.LaxContentLengthStrategy;
 import org.apache.http.impl.io.ChunkedInputStream;
 import org.apache.http.impl.io.ContentLengthInputStream;
@@ -37,6 +38,8 @@ import org.apache.http.impl.io.HttpTransportMetricsImpl;
 import org.apache.http.impl.io.IdentityInputStream;
 import org.apache.http.impl.io.SessionInputBufferImpl;
 import org.apache.http.io.SessionInputBuffer;
+import org.apache.http.params.BasicHttpParams;
+import org.apache.http.params.HttpParams;
 import org.apache.http.protocol.HTTP;
 import org.apache.http.util.EntityUtils;
 
@@ -49,7 +52,11 @@ import edu.cmu.lemurproject.WarcRecord;
  * @version $Date$
  *
  */
+@SuppressWarnings("deprecation")
 public class Warcs {
+  
+  private static final Logger LOGGER =
+      Logger.getLogger(Warcs.class.getName());
   
   private static final Pattern HTML_CONTENT_TYPE_PATTERN = Pattern.compile(
       "text/html.*");
@@ -75,7 +82,7 @@ public class Warcs {
   public static Stream<WarcRecord> getRecords(final File input)
   throws IOException {
     final InputStream inputStream = new FileInputStream(input);
-    if (Files.probeContentType(input.toPath()).equals("application/gzip")) {
+    if (input.getName().endsWith(".gz")) {
       return Warcs.getRecords(new GZIPInputStream(inputStream));
     } else {
       return Warcs.getRecords(inputStream);
@@ -102,7 +109,7 @@ public class Warcs {
   public static Stream<String> getHtmlFromRecords(final File input)
   throws IOException {
     final InputStream inputStream = new FileInputStream(input);
-    if (Files.probeContentType(input.toPath()).equals("application/gzip")) {
+    if (input.getName().endsWith(".gz")) {
       return Warcs.getHtmlFromRecords(new GZIPInputStream(inputStream));
     } else {
       return Warcs.getHtmlFromRecords(inputStream);
@@ -121,8 +128,10 @@ public class Warcs {
             try {
               return Warcs.getHtml(record);
             } catch (final IOException e) {
+              LOGGER.warning(e.getMessage());
               throw new UncheckedIOException(e);
             } catch (final Exception e) {
+              LOGGER.warning(e.getMessage());
               throw new RuntimeException(e);
             }
           })
@@ -139,8 +148,13 @@ public class Warcs {
     final InputStream inputStream =
         new ByteArrayInputStream(record.getByteContent());
     sessionInputBuffer.bind(inputStream);
+    // Current hadoop uses version of httpcomponents where they were the way to
+    // go
+    final HttpParams params = new BasicHttpParams();
     final DefaultHttpResponseParser parser =
-        new DefaultHttpResponseParser(sessionInputBuffer);
+        new DefaultHttpResponseParser(
+            sessionInputBuffer, null, new DefaultHttpResponseFactory(),
+            params);
     final HttpResponse response = parser.parse();
     final HttpEntity entity = Warcs.getEntity(response, sessionInputBuffer);
     response.setEntity(entity);
@@ -207,7 +221,7 @@ public class Warcs {
     final BasicHttpEntity entity = new BasicHttpEntity();
 
     final long len =
-        LaxContentLengthStrategy.INSTANCE.determineLength(response);
+        new LaxContentLengthStrategy().determineLength(response);
     final InputStream instream = Warcs.createInputStream(len, input);
     if (len == ContentLengthStrategy.CHUNKED) {
       entity.setChunked(true);
@@ -249,6 +263,7 @@ public class Warcs {
     if (response == null) { return null; }
     final String contentType =
         response.getLastHeader(HEADER_CONTENT_TYPE).getValue();
+    if (contentType == null) { return null; }
     if (!HTML_CONTENT_TYPE_PATTERN.matcher(contentType).matches()) {
       return null;
     }
