@@ -38,6 +38,7 @@ import org.apache.http.impl.io.HttpTransportMetricsImpl;
 import org.apache.http.impl.io.IdentityInputStream;
 import org.apache.http.impl.io.SessionInputBufferImpl;
 import org.apache.http.io.SessionInputBuffer;
+// Current hadoop uses version of httpcomponents where they were the way to go
 import org.apache.http.params.BasicHttpParams;
 import org.apache.http.params.HttpParams;
 import org.apache.http.protocol.HTTP;
@@ -78,7 +79,11 @@ public class Warcs {
   };
   
   private Warcs() { }
-  
+
+  /**
+   * Reads the WARC records from given input. If the file name ends in .gz, the
+   * WARC will be decompressed. 
+   */  
   public static Stream<WarcRecord> getRecords(final File input)
   throws IOException {
     final InputStream inputStream = new FileInputStream(input);
@@ -88,12 +93,18 @@ public class Warcs {
       return Warcs.getRecords(inputStream);
     }
   }
-  
+
+  /**
+   * Reads the WARC records from given input.
+   */  
   public static Stream<WarcRecord> getRecords(final InputStream input)
   throws IOException {
     return Warcs.getRecords(new DataInputStream(input));
   }
-  
+
+  /**
+   * Reads the WARC records from given input.
+   */
   public static Stream<WarcRecord> getRecords(final DataInputStream input)
   throws IOException {
     final List<WarcRecord> records = new ArrayList<>();
@@ -105,7 +116,12 @@ public class Warcs {
     input.close();
     return records.stream();
   }
-  
+
+  /**
+   * Reads the WARC records from given input and extracts them using
+   * {@link #getHtml(WarcRecord)}. If the file name ends in .gz, the WARC will
+   * be decompressed. 
+   */
   public static Stream<String> getHtmlFromRecords(final File input)
   throws IOException {
     final InputStream inputStream = new FileInputStream(input);
@@ -115,12 +131,20 @@ public class Warcs {
       return Warcs.getHtmlFromRecords(inputStream);
     }
   }
-  
+
+  /**
+   * Reads the WARC records from given input and extracts them using
+   * {@link #getHtml(WarcRecord)}.
+   */
   public static Stream<String> getHtmlFromRecords(final InputStream input)
   throws IOException {
     return Warcs.getHtmlFromRecords(new DataInputStream(input));
   }
-  
+
+  /**
+   * Reads the WARC records from given input and extracts them using
+   * {@link #getHtml(WarcRecord)}.
+   */
   public static Stream<String> getHtmlFromRecords(final DataInputStream input)
   throws IOException {
     return Warcs.getRecords(input)
@@ -138,6 +162,30 @@ public class Warcs {
         .filter(record -> record != null);
   }
   
+  /**
+   * Gets the HTML part of a record or <tt>null</tt> if there is none or an
+   * invalid one.
+   */
+  public static String getHtml(final WarcRecord record)
+  throws ParseException, IOException, HttpException {
+    final HttpResponse response = Warcs.toResponse(record);
+    if (response == null) { return null; }
+    final String contentType =
+        response.getLastHeader(HEADER_CONTENT_TYPE).getValue();
+    if (contentType == null) { return null; }
+    if (!HTML_CONTENT_TYPE_PATTERN.matcher(contentType).matches()) {
+      return null;
+    }
+    final HttpEntity entity = response.getEntity();
+    final String defaultCharset = null;
+    return EntityUtils.toString(entity, defaultCharset);
+  }
+
+  /**
+   * Gets an {@link HttpResponse} object from a WARC record of such a response.
+   * @return The response or <tt>null</tt> when the record is not a response
+   * record
+   */
   public static HttpResponse toResponse(final WarcRecord record)
   throws IOException, HttpException {
     // based on http://stackoverflow.com/a/26586178
@@ -148,8 +196,6 @@ public class Warcs {
     final InputStream inputStream =
         new ByteArrayInputStream(record.getByteContent());
     sessionInputBuffer.bind(inputStream);
-    // Current hadoop uses version of httpcomponents where they were the way to
-    // go
     final HttpParams params = new BasicHttpParams();
     final DefaultHttpResponseParser parser =
         new DefaultHttpResponseParser(
@@ -248,28 +294,6 @@ public class Warcs {
       entity.setContentEncoding(contentEncodingHeader);
     }
     return entity;
-  }
-  
-  /**
-   * Gets the HTML part of a record or <tt>null</tt> if there is none or an
-   * invalid one.
-   * @throws IOException 
-   * @throws ParseException 
-   * @throws HttpException 
-   */
-  public static String getHtml(final WarcRecord record)
-  throws ParseException, IOException, HttpException {
-    final HttpResponse response = Warcs.toResponse(record);
-    if (response == null) { return null; }
-    final String contentType =
-        response.getLastHeader(HEADER_CONTENT_TYPE).getValue();
-    if (contentType == null) { return null; }
-    if (!HTML_CONTENT_TYPE_PATTERN.matcher(contentType).matches()) {
-      return null;
-    }
-    final HttpEntity entity = response.getEntity();
-    final String defaultCharset = null;
-    return EntityUtils.toString(entity, defaultCharset);
   }
 
 }

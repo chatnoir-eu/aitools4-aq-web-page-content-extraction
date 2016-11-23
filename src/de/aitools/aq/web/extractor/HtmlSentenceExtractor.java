@@ -46,9 +46,10 @@ import net.htmlparser.jericho.LoggerProvider;
  * locally and the number of failed extractions is counted when running on
  * Hadoop).
  * </p><p>
- * Currently, it only supports reading HTML files when running locally and only
- * WARC files when running on Hadoop. Every class that extends this class will
- * automatically inherit this functionality.
+ * Currently, it supports reading HTML files and WARC files (both gzipped and
+ * not) when running locally and only WARC files (both gzipped and not) when
+ * running on Hadoop. Every class that extends this class will automatically
+ * inherit this functionality.
  * </p><p>
  * When you extend this class, and your extractor is not configurable, you only
  * have to implement the {@link #extract(String)} method and add the following
@@ -290,8 +291,8 @@ public abstract class HtmlSentenceExtractor {
     final Option inputOption = new Option(SHORT_FLAG_INPUT,
         "Sets the input files to extract the sentences from. In case of a "
         + "directory, the directory is traversed recursively and all HTML "
-        + "files are extracted. Currently only supports HTML files in local "
-        + "mode and WARC files in hadoop mode");
+        + "files are extracted. Currently supports .html, .htm, .warc and "
+        + ".warc.gz in local mode and .warc and .warc.gz files in hadoop mode");
     inputOption.setLongOpt(FLAG_INPUT);
     inputOption.setArgName("file,file,...");
     inputOption.setArgs(Option.UNLIMITED_VALUES);
