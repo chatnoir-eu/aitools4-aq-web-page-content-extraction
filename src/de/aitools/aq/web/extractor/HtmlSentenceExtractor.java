@@ -5,7 +5,6 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.nio.file.Files;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Queue;
@@ -33,6 +32,8 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.util.ToolRunner;
 
 import edu.cmu.lemurproject.WarcHTMLResponseRecord;
+import net.htmlparser.jericho.Config;
+import net.htmlparser.jericho.LoggerProvider;
 
 /**
  * Abstract base class for methods to extract sentences from HTML documents.
@@ -350,6 +351,7 @@ public abstract class HtmlSentenceExtractor {
   protected static void main(final String[] args,
       final Class<? extends HtmlSentenceExtractor> extractorClass)
   throws Exception {
+    Config.LoggerProvider = LoggerProvider.DISABLED;
     final HtmlSentenceExtractor extractor = extractorClass.newInstance();
     final Options options = extractor.getOptions();
     if (args.length == 0) {
@@ -402,10 +404,8 @@ public abstract class HtmlSentenceExtractor {
             inputFileNames, inputFileName + File.separatorChar + child);
       }
     } else {
-      final String contentType = Files.probeContentType(inputFile.toPath());
-      if (contentType == null) {
-        LOGGER.fine("Content type could not be determined " + inputFileName);
-      } else if (contentType.startsWith("text/html")) {
+      if (inputFileName.endsWith(".html")
+          || inputFileName.endsWith(".htm")) {
         LOGGER.fine("Add text/html " + inputFileName);
         inputFileNames.add(inputFileName);
       } else if (inputFileName.endsWith(".warc")) {
@@ -415,8 +415,7 @@ public abstract class HtmlSentenceExtractor {
         LOGGER.fine("Add warc.gz " + inputFileName);
         inputFileNames.add(inputFileName);
       } else {
-        LOGGER.fine("Unsupported content type '" + contentType
-            + "' for " + inputFileName);
+        LOGGER.finer("Unsupported file ending for " + inputFileName);
       }
     }
   }
@@ -476,7 +475,7 @@ public abstract class HtmlSentenceExtractor {
     final File inputFile = new File(inputFileName);
     System.err.println("Extracting " + inputFileName);
     try {
-      if (Files.probeContentType(inputFile.toPath()).startsWith("text/html")) {
+      if (inputFileName.endsWith(".html") || inputFileName.endsWith(".htm")) {
         HtmlSentenceExtractor.extractLocalHtml(
             FileUtils.readFileToString(inputFile), inputFileName, null, null,
             extractor, writer, writeNames);
