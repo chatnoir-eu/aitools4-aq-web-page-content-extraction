@@ -15,6 +15,10 @@ USAGE
 
 EXAMPLE
 
-Extracting sentences from foo.html and bar.warc.gz into directory out
+Extracting sentences from foo.html and bar.warc.gz into directory out:
 
     java -jar <whatever-you-want>.jar local --input foo.html,bar.warc.gz --output out
+
+The same using Hadoop (you need to have set up Hadoop correctly beforehand):
+    
+    hadoop jar <whatever-you-want>.jar hadoop --input foo.html,bar.warc.gz --output out
