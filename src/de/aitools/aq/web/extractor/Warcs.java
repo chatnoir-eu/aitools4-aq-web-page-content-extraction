@@ -107,6 +107,7 @@ public class Warcs {
    */
   public static Stream<WarcRecord> getRecords(final DataInputStream input)
   throws IOException {
+    // TODO: do real streaming for large WARCs
     final List<WarcRecord> records = new ArrayList<>();
     WarcRecord record = WarcRecord.readNextWarcRecord(input);
     while (record != null) {
