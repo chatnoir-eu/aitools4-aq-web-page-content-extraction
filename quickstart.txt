@@ -1,0 +1,24 @@
+BUILDING
+
+  - In Eclipse
+      - Open src/de.aitools.aq.web.extractor.PotthastJerichoExtractor
+      - Rightclick on the code -> Run as -> Java application
+      - Rightclick on the project folder -> Export -> Java -> Runnable JAR File
+        - Launch configuration: PotthastJerichoExtractor - aitools4-aq-web-page-content-extraction
+        - Export destination: <whatever-you-want>.jar
+        - Check "Extract required libraries into generated JAR"
+        - Finish
+
+USAGE
+
+    java -jar <whatever-you-want>.jar
+
+EXAMPLE
+
+Extracting sentences from foo.html and bar.warc.gz into directory out:
+
+    java -jar <whatever-you-want>.jar local --input foo.html,bar.warc.gz --output out
+
+The same using Hadoop (you need to have set up Hadoop correctly beforehand):
+    
+    hadoop jar <whatever-you-want>.jar hadoop --input foo.html,bar.warc.gz --output out
