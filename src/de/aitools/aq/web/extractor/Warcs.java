@@ -164,19 +164,41 @@ public class Warcs {
   }
   
   /**
+   * Checks if this is a HTML response record.
+   */
+  public static boolean isHtml(final WarcRecord record)
+  throws HttpException, IOException {
+    if (record == null) { return false; }
+    final HttpResponse response = Warcs.toResponse(record);
+    return Warcs.isHtml(response);
+  }
+  
+  /**
+   * Checks if this is a HTML response.
+   */
+  public static boolean isHtml(final HttpResponse response) {
+    if (response == null) { return false; }
+
+    final String contentType =
+        response.getLastHeader(HEADER_CONTENT_TYPE).getValue();
+    if (contentType == null) { return false; } // no content type
+
+    if (!HTML_CONTENT_TYPE_PATTERN.matcher(contentType).matches()) {
+      return false; // not HTML content type
+    }
+    
+    return true;
+  }
+  
+  /**
    * Gets the HTML part of a record or <tt>null</tt> if there is none or an
    * invalid one.
    */
   public static String getHtml(final WarcRecord record)
   throws ParseException, IOException, HttpException {
     final HttpResponse response = Warcs.toResponse(record);
-    if (response == null) { return null; }
-    final String contentType =
-        response.getLastHeader(HEADER_CONTENT_TYPE).getValue();
-    if (contentType == null) { return null; }
-    if (!HTML_CONTENT_TYPE_PATTERN.matcher(contentType).matches()) {
-      return null;
-    }
+    if (!Warcs.isHtml(response)) { return null; } // no HTML record
+
     final HttpEntity entity = response.getEntity();
     final String defaultCharset = null;
     return EntityUtils.toString(entity, defaultCharset);
