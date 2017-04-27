@@ -54,9 +54,9 @@ public class HadoopHtmlSentenceExtractionTool implements Tool {
   //                                  CONSTANTS                               //
   //////////////////////////////////////////////////////////////////////////////
   
-  private static final String PARAM_ARGS = "extraction.args";
+  protected static final String PARAM_ARGS = "extraction.args";
   
-  private static final String PARAM_EXTRACTOR = "extraction.extractor";
+  protected static final String PARAM_EXTRACTOR = "extraction.extractor";
 
   //////////////////////////////////////////////////////////////////////////////
   //                                   MEMBERS                                //
@@ -162,7 +162,7 @@ public class HadoopHtmlSentenceExtractionTool implements Tool {
   public static class WarcMapper
   extends Mapper<LongWritable, WritableWarcRecord, Text, Text> {
 
-    private static final Text EMPTY_TEXT = new Text("");
+    protected static final Text EMPTY_TEXT = new Text("");
 
     public static enum COUNTERS {
       VALID_FILES,
@@ -179,6 +179,14 @@ public class HadoopHtmlSentenceExtractionTool implements Tool {
     public WarcMapper() {
       this.extractor = null;
       this.writeNames = false;
+    }
+    
+    protected HtmlSentenceExtractor getExtractor() {
+      return this.extractor;
+    }
+    
+    protected boolean getWriteNames() {
+      return this.writeNames;
     }
     
     @Override
