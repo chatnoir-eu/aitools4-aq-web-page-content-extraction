@@ -1,0 +1,3 @@
+rootProject.name = 'aitools4-aq-web-page-content-extraction'
+includeBuild '../aitools3-ie-languagedetection'
+includeBuild '../aitools3-ie-stopwords'

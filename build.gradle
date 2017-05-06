@@ -1,0 +1,30 @@
+group 'de.webis.aitools'
+version '1.0-SNAPSHOT'
+
+apply plugin: 'java'
+apply plugin: 'eclipse'
+apply plugin: 'idea'
+
+sourceCompatibility = 1.8
+
+repositories {
+    mavenCentral()
+}
+
+sourceSets {
+    main {
+        java {
+            srcDirs = [ 'src' ]
+        }
+    }
+}
+
+dependencies {
+    compile fileTree(dir: "$projectDir/../../thirdparty/thirdparty-jericho-html-3.3/", include: '**/*.jar', exclude: '**/*.sources.jar')
+    compile fileTree(dir: "$projectDir/../../thirdparty/thirdparty-apache-hadoop-2.5.2/", include: '**/*.jar', exclude: '**/*.sources.jar')
+    compile 'de.webis.aitools:aitools3-ie-languagedetection'
+    compile fileTree(dir: "$projectDir/../../thirdparty/thirdparty-icu4j-4.8.1.1/", include: '**/*.jar', exclude: '**/*.sources.jar')
+    compile 'de.webis.aitools:aitools3-ie-stopwords'
+    compile fileTree(dir: "$projectDir/../../thirdparty/thirdparty-apache-commons-cli-1.2/", include: '**/*.jar', exclude: '**/*.sources.jar')
+    compile fileTree(dir: "$projectDir/../../thirdparty/thirdparty-apache-httpcomponents-client-4.5.2/", include: '**/*.jar', exclude: '**/*.sources.jar')
+}
