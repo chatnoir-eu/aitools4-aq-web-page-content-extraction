@@ -1,3 +1,9 @@
 rootProject.name = 'aitools4-aq-web-page-content-extraction'
-includeBuild '../aitools3-ie-languagedetection'
-includeBuild '../aitools3-ie-stopwords'
+
+include ':aitools3-ie-languagedetection'
+project(':aitools3-ie-languagedetection').projectDir =
+        new File("../../aitools/aitools3-ie-languagedetection")
+
+include ':aitools3-ie-stopwords'
+project(':aitools3-ie-stopwords').projectDir =
+        new File("../../aitools/aitools3-ie-stopwords")
