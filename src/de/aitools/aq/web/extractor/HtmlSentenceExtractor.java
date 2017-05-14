@@ -133,7 +133,7 @@ public abstract class HtmlSentenceExtractor {
   //                                   MEMBERS                                //
   //////////////////////////////////////////////////////////////////////////////
   
-  private final ExecutorService executor;
+  private static ExecutorService executor = null;
   
   private int timeoutInSeconds;
 
@@ -145,7 +145,9 @@ public abstract class HtmlSentenceExtractor {
    * Create a new extractor that does not timeout extraction attempts.
    */
   public HtmlSentenceExtractor() {
-    this.executor = Executors.newCachedThreadPool();
+    if (null == this.executor || this.executor.isShutdown()) {
+      this.executor = Executors.newCachedThreadPool();
+    }
     this.setNoTimeout();
   }
 
@@ -264,6 +266,16 @@ public abstract class HtmlSentenceExtractor {
         future.cancel(true);
         throw new ExecutionException(e);
       }
+    }
+  }
+
+  /**
+   * Cleanly shutdown all threads spawned by the extraction tool.
+   * You cannot use the extractor anymore after this call!
+   */
+  public void shutdown() {
+    if (null != this.executor && !this.executor.isShutdown()) {
+      this.executor.shutdown();
     }
   }
   
