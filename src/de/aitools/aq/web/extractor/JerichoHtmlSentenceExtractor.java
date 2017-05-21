@@ -72,6 +72,10 @@ public class JerichoHtmlSentenceExtractor extends HtmlSentenceExtractor {
   
   private static String FLAG_PARAGRAPH_SEPARATOR = "separate-paragraphs-with";
 
+  private static String FLAG_DO_NOT_EXTRACT_ALT_TEXTS = "alt-text-extract-not";
+
+  private static String SHORT_FLAG_DO_NOT_EXTRACT_ALT_TEXTS = "oa";
+
   //////////////////////////////////////////////////////////////////////////////
   //                                   MEMBERS                                //
   //////////////////////////////////////////////////////////////////////////////
@@ -83,6 +87,8 @@ public class JerichoHtmlSentenceExtractor extends HtmlSentenceExtractor {
   private String paragraphSeparator;
   
   private boolean separateParagraphs;
+
+  private boolean extractAltTexts = true;
 
   //////////////////////////////////////////////////////////////////////////////
   //                                CONSTRUCTORS                              //
@@ -136,6 +142,13 @@ public class JerichoHtmlSentenceExtractor extends HtmlSentenceExtractor {
   public boolean separatesParagraphs() {
     return this.separateParagraphs;
   }
+
+  /**
+   * Whether alternative image descriptions should be extracted (default: true).
+   */
+  public boolean extractsAltTexts() {
+    return this.extractAltTexts;
+  }
   
   /**
    * If {@link #separatesParagraphs()} is <tt>true</tt>, gets the String that is
@@ -166,6 +179,14 @@ public class JerichoHtmlSentenceExtractor extends HtmlSentenceExtractor {
   public void setExtractAllLanguages() {
     this.targetLanguages = null;
     this.languageDetector = null;
+  }
+
+  /**
+   * Configure this extractor to extract or not extract alternative image
+   * descriptions (alt attributes) from the given input HTML text.
+   */
+  public void setExtractAltTexts(final boolean extractAltTexts) {
+    this.extractAltTexts = extractAltTexts;
   }
 
   /**
@@ -313,6 +334,8 @@ public class JerichoHtmlSentenceExtractor extends HtmlSentenceExtractor {
         config.getOptionValue(FLAG_PARAGRAPH_SEPARATOR);
     final boolean doNotSeparateParagraphs =
         config.hasOption(FLAG_DO_NOT_SEPARATE_PARAGRAPHS);
+    final boolean doNotExtractAltTexts =
+        config.hasOption(FLAG_DO_NOT_EXTRACT_ALT_TEXTS);
     
     if (detectAll) {
       this.setExtractAllLanguages();
@@ -326,6 +349,10 @@ public class JerichoHtmlSentenceExtractor extends HtmlSentenceExtractor {
       this.setDoNotSeparateParagraphs();
     } else if (paragraphSeparator != null) {
       this.setParagraphSeparator(paragraphSeparator);
+    }
+
+    if (doNotExtractAltTexts) {
+      this.setExtractAltTexts(false);
     }
   }
 
@@ -373,6 +400,7 @@ public class JerichoHtmlSentenceExtractor extends HtmlSentenceExtractor {
       final Renderer renderer = new Renderer(segment);
       renderer.setMaxLineLength(0);
       renderer.setIncludeHyperlinkURLs(false);
+      renderer.setIncludeAlternateText(this.extractAltTexts);
       final String[] paragraphsArray = renderer.toString().split("\n");
       final List<String> paragraphs = new ArrayList<>(paragraphsArray.length);
       for (final String paragraph : paragraphsArray) {
@@ -551,6 +579,15 @@ public class JerichoHtmlSentenceExtractor extends HtmlSentenceExtractor {
     paragraphNotSeparateOption.setLongOpt(FLAG_DO_NOT_SEPARATE_PARAGRAPHS);
     paragraphs.addOption(paragraphNotSeparateOption);
     options.addOptionGroup(paragraphs);
+
+
+    final OptionGroup other = new OptionGroup();
+    final Option noAltTextExtraction = new Option(
+            SHORT_FLAG_DO_NOT_EXTRACT_ALT_TEXTS, false,
+            "Configures this extractor to not extract alternative image descriptions");
+    noAltTextExtraction.setLongOpt(FLAG_DO_NOT_EXTRACT_ALT_TEXTS);
+    other.addOption(noAltTextExtraction);
+    options.addOptionGroup(other);
 
     return options;
   }
