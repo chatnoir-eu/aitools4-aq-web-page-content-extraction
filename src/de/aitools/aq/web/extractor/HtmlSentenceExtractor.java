@@ -133,7 +133,7 @@ public abstract class HtmlSentenceExtractor {
   //                                   MEMBERS                                //
   //////////////////////////////////////////////////////////////////////////////
   
-  private static ExecutorService executor = null;
+  private static ExecutorService EXECUTOR = null;
   
   private int timeoutInSeconds;
 
@@ -145,9 +145,6 @@ public abstract class HtmlSentenceExtractor {
    * Create a new extractor that does not timeout extraction attempts.
    */
   public HtmlSentenceExtractor() {
-    if (null == this.executor || this.executor.isShutdown()) {
-      this.executor = Executors.newCachedThreadPool();
-    }
     this.setNoTimeout();
   }
 
@@ -206,6 +203,9 @@ public abstract class HtmlSentenceExtractor {
   
   /**
    * Configures this extractor to timeout extraction attempts.
+   * <p>This requires an executor service, which is automatically started
+   * (if not yet running) when you set a timeout (i.e., not use
+   * {@value #NO_TIMEOUT}).</p>
    * @param timeoutInSeconds The number of seconds after which to timeout the
    * extraction attempt, then throwing an exception, or {@link #NO_TIMEOUT} to
    * not timeout attempts ever
@@ -216,7 +216,58 @@ public abstract class HtmlSentenceExtractor {
       throw new IllegalArgumentException(
           "Non-positive timeout: " + timeoutInSeconds);
     }
+    if (timeoutInSeconds != NO_TIMEOUT) {
+      HtmlSentenceExtractor.startExecutorService();
+    }
     this.timeoutInSeconds = timeoutInSeconds;
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+  //                                 EXECUTOR                                 //
+  //////////////////////////////////////////////////////////////////////////////
+
+  /**
+   * Start the executor service, which is needed for extracting sentences with
+   * timeout.
+   * <p>This method is automatically called when you set a timeout (using
+   * {@link #setTimeoutInSeconds(int)}).</p>
+   */
+  public static void startExecutorService() {
+    synchronized (LOGGER) {
+      if (null == EXECUTOR || EXECUTOR.isShutdown()) {
+        LOGGER.fine("Starting executor service");
+        EXECUTOR = Executors.newCachedThreadPool();
+      }
+    }
+  }
+
+  /**
+   * Cleanly shutdown all threads spawned by HtmlSentenceExtractors.
+   * <p>You have to use {@link #startExecutorService()} before using a
+   * HtmlSentenceExtractor with timeout again.</p>
+   * @return True if all spawned thread finished before this method returns
+   * (false if interrupted while waiting for threads to finish)
+   */
+  public static boolean shutdownExecutorService() {
+    synchronized (LOGGER) {
+      if (null != EXECUTOR && !EXECUTOR.isShutdown()) {
+        EXECUTOR.shutdown();
+        try {
+          while (!EXECUTOR.isTerminated()) {
+            LOGGER.fine(
+                "Shutdown executor service: waiting for threads to finish");
+            EXECUTOR.awaitTermination(10, TimeUnit.SECONDS);
+          }
+        } catch (final InterruptedException e) {
+          LOGGER.warning("Shutdown executor service: interrupted");
+          if (!EXECUTOR.isTerminated()) {
+            return false;
+          }
+        }
+      }
+      LOGGER.fine("Shutdown executor service: all threads finished");
+      return true;
+    }
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -259,23 +310,13 @@ public abstract class HtmlSentenceExtractor {
             return extractor.extract(htmlInput);
          }
       };
-      final Future<List<String>> future = this.executor.submit(task);
+      final Future<List<String>> future = EXECUTOR.submit(task);
       try {
         return future.get(this.timeoutInSeconds, TimeUnit.SECONDS);
       } catch (final Throwable e) {
         future.cancel(true);
         throw new ExecutionException(e);
       }
-    }
-  }
-
-  /**
-   * Cleanly shutdown all threads spawned by the extraction tool.
-   * You cannot use the extractor anymore after this call!
-   */
-  public void shutdown() {
-    if (null != this.executor && !this.executor.isShutdown()) {
-      this.executor.shutdown();
     }
   }
   
