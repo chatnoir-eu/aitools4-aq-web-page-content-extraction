@@ -116,7 +116,6 @@ public class HadoopHtmlTrecUriExtractionTool implements Tool {
     public static enum COUNTERS {
       VALID,
       INVALID_BY_ERROR,
-      INVALID_NO_HTML,
       INVALID_NO_TREC_ID,
       INVALID_NO_LOCATION,
     }
@@ -127,25 +126,21 @@ public class HadoopHtmlTrecUriExtractionTool implements Tool {
     throws IOException, InterruptedException {
       final WarcRecord warcRecord = value.getRecord();
       try {
-        if (Warcs.isHtml(warcRecord)) {
-          final String trecId =
-              warcRecord.getHeaderMetadataItem("WARC-TREC-ID");
-          if (trecId != null) {
-            final String targetUri =
-                warcRecord.getHeaderMetadataItem("WARC-Target-URI");
-            if (targetUri != null) {
-              final Text id = new Text(trecId);
-              final Text uri = new Text(targetUri);
-              context.write(id, uri);
-              context.getCounter(COUNTERS.VALID).increment(1);
-            } else {
-              context.getCounter(COUNTERS.INVALID_NO_LOCATION).increment(1);
-            }
+        final String trecId =
+            warcRecord.getHeaderMetadataItem("WARC-TREC-ID");
+        if (trecId != null) {
+          final String targetUri =
+              warcRecord.getHeaderMetadataItem("WARC-Target-URI");
+          if (targetUri != null) {
+            final Text id = new Text(trecId);
+            final Text uri = new Text(targetUri);
+            context.write(id, uri);
+            context.getCounter(COUNTERS.VALID).increment(1);
           } else {
-            context.getCounter(COUNTERS.INVALID_NO_TREC_ID).increment(1);
+            context.getCounter(COUNTERS.INVALID_NO_LOCATION).increment(1);
           }
         } else {
-          context.getCounter(COUNTERS.INVALID_NO_HTML).increment(1);
+          context.getCounter(COUNTERS.INVALID_NO_TREC_ID).increment(1);
         }
       } catch (final Throwable e) {
         context.getCounter(COUNTERS.INVALID_BY_ERROR).increment(1);
